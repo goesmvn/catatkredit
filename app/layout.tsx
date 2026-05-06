@@ -3,7 +3,6 @@ import './globals.css'
 import BottomNav from '@/components/layout/BottomNav'
 import { AuthProvider } from '@/lib/auth'
 import AuthGuard from '@/components/layout/AuthGuard'
-import SyncProvider from '@/components/SyncProvider'
 
 export const metadata: Metadata = {
   title: 'CatatKredit - Pencatatan Kredit Pelanggan',
@@ -36,14 +35,12 @@ export default function RootLayout({
       <body style={{ fontFamily: '"Inter", sans-serif' }}>
         <AuthProvider>
           <AuthGuard>
-            <SyncProvider>
-              <div className="app-container">
-                <BottomNav />
-                <main className="main-content">
-                  {children}
-                </main>
-              </div>
-            </SyncProvider>
+            <div className="app-container">
+              <BottomNav />
+              <main className="main-content">
+                {children}
+              </main>
+            </div>
           </AuthGuard>
         </AuthProvider>
       </body>

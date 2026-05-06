@@ -18,29 +18,8 @@ export default function PengaturanPage() {
     }))
   }
 
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [syncMessage, setSyncMessage] = useState('')
-
-  const handleSync = async () => {
-    setIsSyncing(true)
-    setSyncMessage('')
-    try {
-      const { syncDatabase } = await import('@/lib/db/sync')
-      await syncDatabase()
-      setSyncMessage('✅ Sinkronisasi Cloud berhasil!')
-    } catch (error: any) {
-      console.error(error)
-      setSyncMessage('❌ Gagal sinkronisasi. Cek koneksi & kredensial Supabase.')
-    } finally {
-      setIsSyncing(false)
-      setShowToast(true)
-      setTimeout(() => setShowToast(false), 4000)
-    }
-  }
-
   const handleSave = () => {
     updateSettings(settings)
-    setSyncMessage('✅ Pengaturan berhasil disimpan!')
     setShowToast(true)
     setTimeout(() => setShowToast(false), 3000)
   }
@@ -152,13 +131,13 @@ export default function PengaturanPage() {
       {showToast && (
         <div style={{
           position: 'fixed', bottom: '100px', left: '50%', transform: 'translateX(-50%)',
-          background: syncMessage.includes('❌') ? 'var(--danger)' : 'var(--success)', 
+          background: 'var(--success)', 
           color: 'white', padding: '12px 24px',
           borderRadius: '100px', fontWeight: 600, fontSize: '14px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 1000,
           animation: 'slideUp 0.3s ease'
         }}>
-          {syncMessage}
+          ✅ Pengaturan berhasil disimpan!
         </div>
       )}
     </div>
