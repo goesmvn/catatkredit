@@ -6,7 +6,7 @@ services:
     container_name: catatkredit-app
     restart: always
     ports:
-      - "3000:3000"
+      - "3050:3000"
     volumes:
       - catatkredit_data:/app/data
     environment:
