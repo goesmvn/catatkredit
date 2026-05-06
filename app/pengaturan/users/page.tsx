@@ -3,93 +3,71 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
-import { database } from '@/lib/db'
-import { Profile } from '@/lib/db/models/Profile'
 
 export default function UserManagementPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const [users, setUsers] = useState<Profile[]>([])
+  const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState({ username: '', nama_lengkap: '', pin: '', role: 'KASIR' })
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (user && user.role !== 'ADMIN') {
-      router.push('/')
-      return
-    }
-    
-    const sub = database.collections.get('profiles').query().observe().subscribe((data: Profile[]) => {
-      setUsers(data)
-      setLoading(false)
-    })
-    
-    return () => sub.unsubscribe()
+    if (user && user.role !== 'ADMIN') { router.push('/'); return }
+    fetchUsers()
   }, [user, router])
+
+  const fetchUsers = async () => {
+    try {
+      const data = await fetch('/api/profiles').then(r => r.json())
+      setUsers(data)
+    } catch (e) { console.error(e) } finally { setLoading(false) }
+  }
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.username || !form.nama_lengkap || !form.pin) return
-    
     setSubmitting(true)
     try {
-      await database.write(async () => {
-        if (editingId) {
-          const profileToUpdate = await database.collections.get('profiles').find(editingId) as Profile
-          await profileToUpdate.update((p: any) => {
-            p.username = form.username.toLowerCase()
-            p.nama_lengkap = form.nama_lengkap
-            p.role = form.role
-            p.pin = form.pin
-          })
-        } else {
-          await database.collections.get('profiles').create((p: any) => {
-            p.username = form.username.toLowerCase()
-            p.nama_lengkap = form.nama_lengkap
-            p.role = form.role
-            p.pin = form.pin
-          })
-        }
-      })
-
+      if (editingId) {
+        await fetch(`/api/profiles/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form)
+        })
+      } else {
+        const id = crypto.randomUUID()
+        await fetch('/api/profiles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, ...form })
+        })
+      }
       setShowModal(false)
       setForm({ username: '', nama_lengkap: '', pin: '', role: 'KASIR' })
       setEditingId(null)
-      alert(editingId ? 'Pengguna berhasil diperbarui!' : 'Berhasil menambahkan pengguna baru secara lokal!')
+      fetchUsers()
+      alert(editingId ? 'Pengguna berhasil diperbarui!' : 'Berhasil menambahkan pengguna baru!')
     } catch (err: any) {
-      console.error(err)
       alert(`Gagal: ${err.message}`)
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleDelete = async (u: Profile) => {
-    if (u.username === 'admin') {
-      alert('Admin utama tidak dapat dihapus!')
-      return
-    }
+  const handleDelete = async (u: any) => {
+    if (u.username === 'admin') { alert('Admin utama tidak dapat dihapus!'); return }
     if (confirm(`Apakah Anda yakin ingin menghapus pengguna ${u.nama_lengkap}?`)) {
-      try {
-        await database.write(async () => {
-          await u.destroyPermanently()
-        })
-        alert('Pengguna berhasil dihapus.')
-      } catch (err: any) {
-        alert(`Gagal: ${err.message}`)
-      }
+      await fetch(`/api/profiles/${u.id}`, { method: 'DELETE' })
+      fetchUsers()
+      alert('Pengguna berhasil dihapus.')
     }
   }
 
-  const openEditModal = (u: Profile) => {
-    if (u.username === 'admin') {
-      alert('Admin utama tidak dapat diedit melalui antarmuka ini!')
-      return
-    }
+  const openEditModal = (u: any) => {
+    if (u.username === 'admin') { alert('Admin utama tidak dapat diedit!'); return }
     setForm({ username: u.username, nama_lengkap: u.nama_lengkap, pin: u.pin, role: u.role })
     setEditingId(u.id)
     setShowModal(true)
@@ -135,20 +113,11 @@ export default function UserManagementPage() {
         </div>
       )}
 
-      {/* Floating Action Button */}
-      <button 
-        className="fab" 
-        onClick={() => {
-          setEditingId(null)
-          setForm({ username: '', nama_lengkap: '', pin: '', role: 'KASIR' })
-          setShowModal(true)
-        }}
-        style={{ bottom: 'calc(var(--nav-h) + 20px)' }}
-      >
-        +
-      </button>
+      {/* FAB */}
+      <button className="fab" onClick={() => { setEditingId(null); setForm({ username: '', nama_lengkap: '', pin: '', role: 'KASIR' }); setShowModal(true) }}
+        style={{ bottom: 'calc(var(--nav-h) + 20px)' }}>+</button>
 
-      {/* Modal Tambah Pengguna */}
+      {/* Modal */}
       {showModal && (
         <div className="overlay">
           <div className="modal-sheet">
@@ -156,63 +125,34 @@ export default function UserManagementPage() {
             <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '24px' }}>
               {editingId ? 'Edit Pengguna' : 'Tambah Pengguna Baru'}
             </h2>
-            
             <form onSubmit={handleSaveUser} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">Nama Lengkap</label>
-                <input 
-                  type="text" 
-                  required
-                  className="form-input" 
-                  placeholder="Contoh: Budi Kasir"
-                  value={form.nama_lengkap}
-                  onChange={(e) => setForm({...form, nama_lengkap: e.target.value})}
-                />
+                <input type="text" required className="form-input" placeholder="Contoh: Budi Kasir"
+                  value={form.nama_lengkap} onChange={(e) => setForm({ ...form, nama_lengkap: e.target.value })} />
               </div>
               <div className="form-group">
                 <label className="form-label">Username</label>
-                <input 
-                  type="text" 
-                  required
-                  className="form-input" 
-                  placeholder="Contoh: budi"
-                  autoCapitalize="none"
-                  value={form.username}
-                  onChange={(e) => setForm({...form, username: e.target.value.toLowerCase()})}
-                />
+                <input type="text" required className="form-input" placeholder="Contoh: budi" autoCapitalize="none"
+                  value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} />
               </div>
               <div className="form-group">
                 <label className="form-label">PIN Akses (Min. 6 digit)</label>
-                <input 
-                  type="password" 
-                  required
-                  pattern="[0-9]*"
-                  inputMode="numeric"
-                  className="form-input" 
-                  placeholder="Masukkan angka PIN"
-                  value={form.pin}
-                  onChange={(e) => setForm({...form, pin: e.target.value})}
-                />
+                <input type="password" required pattern="[0-9]*" inputMode="numeric" className="form-input" placeholder="Masukkan angka PIN"
+                  value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} />
               </div>
               <div className="form-group">
                 <label className="form-label">Role Akses</label>
-                <select 
-                  className="form-select"
-                  value={form.role}
-                  onChange={(e) => setForm({...form, role: e.target.value})}
-                >
+                <select className="form-select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                   <option value="KASIR">Kasir (Hanya Input)</option>
                   <option value="ADMIN">Admin (Akses Penuh)</option>
                 </select>
               </div>
-
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
                 <button type="submit" disabled={submitting} className="btn btn-xl btn-primary btn-full">
                   {submitting ? 'Menyimpan...' : 'Simpan Pengguna'}
                 </button>
-                <button type="button" onClick={() => setShowModal(false)} className="btn btn-ghost btn-xl btn-full">
-                  Batal
-                </button>
+                <button type="button" onClick={() => setShowModal(false)} className="btn btn-ghost btn-xl btn-full">Batal</button>
               </div>
             </form>
           </div>

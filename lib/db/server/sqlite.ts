@@ -82,6 +82,16 @@ export function initDB() {
       deleted_at INTEGER
     );
   `);
+
+  // Seed admin default jika belum ada
+  const adminExists = db.prepare("SELECT id FROM profiles WHERE username = 'admin'").get();
+  if (!adminExists) {
+    const now = Date.now();
+    db.prepare(
+      `INSERT INTO profiles (id, username, nama_lengkap, role, pin, created_at, updated_at)
+       VALUES ('admin-local-id', 'admin', 'Admin Utama', 'ADMIN', '123456', ?, ?)`
+    ).run(now, now);
+  }
 }
 
 export { db };

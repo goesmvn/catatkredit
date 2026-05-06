@@ -3,11 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-import { database } from '@/lib/db'
-
 export default function PelangganBaruPage() {
   const router = useRouter()
   const [saved, setSaved] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({
     nama: '', alamat: '', no_hp: '', ciri_ciri: '',
   })
@@ -18,23 +17,29 @@ export default function PelangganBaruPage() {
       return
     }
 
+    setSubmitting(true)
     try {
-      await database.write(async () => {
-        await database.collections.get('customers').create((customer: any) => {
-          customer.nama = form.nama.trim()
-          customer.alamat = form.alamat.trim()
-          customer.no_hp = form.no_hp.trim()
-          customer.ciri_ciri = form.ciri_ciri.trim()
-          customer.status = 'LANCAR'
-          customer.total_hutang = 0
+      const id = crypto.randomUUID()
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          nama: form.nama.trim(),
+          alamat: form.alamat.trim(),
+          no_hp: form.no_hp.trim(),
+          ciri_ciri: form.ciri_ciri.trim(),
         })
       })
 
+      if (!res.ok) throw new Error('Gagal menyimpan')
       setSaved(true)
       setTimeout(() => router.push('/pelanggan'), 1500)
     } catch (error) {
       console.error(error)
       alert('Terjadi kesalahan saat menyimpan data.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -46,10 +51,10 @@ export default function PelangganBaruPage() {
         color: 'white',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-          <button onClick={() => router.back()} style={{ 
+          <button onClick={() => router.back()} style={{
             display: 'inline-flex', alignItems: 'center', gap: '8px',
-            background: 'white', color: 'var(--primary-dark)', 
-            padding: '8px 16px', borderRadius: '50px', 
+            background: 'white', color: 'var(--primary-dark)',
+            padding: '8px 16px', borderRadius: '50px',
             border: 'none', cursor: 'pointer',
             fontSize: '16px', fontWeight: 700,
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
@@ -67,7 +72,6 @@ export default function PelangganBaruPage() {
       )}
 
       <div className="page-body">
-        {/* Photo */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
           <div style={{
             width: 100, height: 100, borderRadius: '50%',
@@ -78,7 +82,6 @@ export default function PelangganBaruPage() {
             <span style={{ fontSize: '32px' }}>📷</span>
             <span style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600 }}>Foto</span>
           </div>
-          <button className="btn btn-outline btn-sm">📷 Ambil Foto Pelanggan</button>
         </div>
 
         <div className="form-group">
@@ -124,8 +127,8 @@ export default function PelangganBaruPage() {
           <p className="form-hint">Catatan ini membantu mengidentifikasi pelanggan dengan mudah</p>
         </div>
 
-        <button onClick={handleSave} className="btn btn-success btn-xl btn-full">
-          💾 Simpan Pelanggan
+        <button onClick={handleSave} disabled={submitting} className="btn btn-success btn-xl btn-full">
+          {submitting ? 'Menyimpan...' : '💾 Simpan Pelanggan'}
         </button>
       </div>
     </div>

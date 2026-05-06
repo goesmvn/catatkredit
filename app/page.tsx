@@ -3,94 +3,77 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { formatRupiah, getSettings } from '@/lib/mockData'
-import { database } from '@/lib/db'
-import { Customer } from '@/lib/db/models/Customer'
-import { Transaction } from '@/lib/db/models/Transaction'
-import { Payment } from '@/lib/db/models/Payment'
 
 const daysSince = (d: number): number => Math.floor((Date.now() - d) / 86400000)
 
 export default function DashboardPage() {
   const settings = getSettings()
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-  const [dbCustomers, setDbCustomers] = useState<Customer[]>([])
-  const [dbPayments, setDbPayments] = useState<Payment[]>([])
-  const [dbTransactions, setDbTransactions] = useState<Transaction[]>([])
-
-  useEffect(() => {
-    const customersSub = database.collections.get('customers').query().observe().subscribe((data: Customer[]) => setDbCustomers(data))
-    const paymentsSub = database.collections.get('payments').query().observe().subscribe((data: Payment[]) => setDbPayments(data))
-    const transactionsSub = database.collections.get('transactions').query().observe().subscribe((data: Transaction[]) => setDbTransactions(data))
-    
-    return () => {
-      customersSub.unsubscribe()
-      paymentsSub.unsubscribe()
-      transactionsSub.unsubscribe()
+  const fetchDashboard = async () => {
+    try {
+      const res = await fetch('/api/dashboard')
+      const json = await res.json()
+      setData(json)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
     }
-  }, [])
-
-  const totalPiutang = dbCustomers.reduce((sum, c) => sum + c.total_hutang, 0)
-  
-  const nowMs = Date.now()
-  const batasMs = (settings.batas_menunggak_hari || 30) * 86400000
-  
-  const menunggakCount = dbCustomers.filter(c => {
-    if (c.status === 'BLACKLIST') return false
-    if (c.total_hutang <= 0) return false
-    
-    const unpaidTxs = dbTransactions.filter(t => (t as any)._raw.customer_id === c.id && t.status !== 'LUNAS')
-    return unpaidTxs.some(t => {
-      const txDate = new Date(t.tanggal).getTime()
-      return (nowMs - txDate) > batasMs
-    })
-  }).length
-  
-  const todayStr = new Date().toISOString().split('T')[0]
-  const uangMasuk = dbPayments
-    .filter(p => new Date(p.tanggal_bayar).toISOString().split('T')[0] === todayStr)
-    .reduce((sum, p) => sum + p.nominal_bayar, 0)
-
-  // Dynamic activities from database
-  const getCustomerName = (id: string) => {
-    return dbCustomers.find(c => c.id === id)?.nama || 'Pelanggan'
   }
 
+  useEffect(() => {
+    fetchDashboard()
+    // Refresh setiap 30 detik
+    const interval = setInterval(fetchDashboard, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  if (loading || !data) {
+    return <div style={{ textAlign: 'center', padding: '60px 20px', fontSize: '18px' }}>Memuat data...</div>
+  }
+
+  const { totalPiutang, uangMasukHariIni, customers = [], transactions = [], payments = [] } = data
+
+  const nowMs = Date.now()
+  const batasMs = (settings.batas_menunggak_hari || 30) * 86400000
+
+  const menunggakCount = customers.filter((c: any) => {
+    if (c.status === 'BLACKLIST') return false
+    if (c.total_hutang <= 0) return false
+    const unpaidTxs = transactions.filter((t: any) => t.customer_id === c.id && t.status !== 'LUNAS')
+    return unpaidTxs.some((t: any) => (nowMs - t.tanggal) > batasMs)
+  }).length
+
+  const getCustomerName = (id: string) => customers.find((c: any) => c.id === id)?.nama || 'Pelanggan'
+
   const allActivities = [
-    ...dbPayments.map(p => {
-      const customerId = (p as any)._raw.customer_id
-      return {
-        id: `p_${p.id}`,
-        timestamp: new Date(p.tanggal_bayar).getTime(),
-        icon: '💰',
-        text: `${getCustomerName(customerId)} bayar ${formatRupiah(p.nominal_bayar)}`,
-        color: 'var(--success)'
-      }
-    }),
-    ...dbTransactions.map(t => {
-      const customerId = (t as any)._raw.customer_id
-      return {
-        id: `t_${t.id}`,
-        timestamp: new Date(t.tanggal).getTime(),
-        icon: '📝',
-        text: `Kredit baru: ${getCustomerName(customerId)} (${formatRupiah(t.total_harga)})`,
-        color: 'var(--primary)'
-      }
-    })
+    ...payments.map((p: any) => ({
+      id: `p_${p.id}`,
+      timestamp: p.tanggal_bayar,
+      icon: '💰',
+      text: `${getCustomerName(p.customer_id)} bayar ${formatRupiah(p.nominal_bayar)}`,
+      color: 'var(--success)'
+    })),
+    ...transactions.map((t: any) => ({
+      id: `t_${t.id}`,
+      timestamp: t.tanggal,
+      icon: '📝',
+      text: `Kredit baru: ${getCustomerName(t.customer_id)} (${formatRupiah(t.total_harga)})`,
+      color: 'var(--primary)'
+    }))
   ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5)
 
   const formatActivityTime = (ts: number) => {
     const date = new Date(ts)
     const today = new Date()
-    const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()
-    
+    const isToday = date.toDateString() === today.toDateString()
     const timeStr = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
     if (isToday) return `Hari ini ${timeStr}`
-    
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
-    const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear()
-    if (isYesterday) return `Kemarin ${timeStr}`
-    
+    if (date.toDateString() === yesterday.toDateString()) return `Kemarin ${timeStr}`
     return `${date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} ${timeStr}`
   }
 
@@ -141,7 +124,7 @@ export default function DashboardPage() {
           }}>
             <p style={{ fontSize: '13px', opacity: 0.85, marginBottom: '6px', fontWeight: 500 }}>💵 Masuk Hari Ini</p>
             <p style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
-              {uangMasuk > 0 ? formatRupiah(uangMasuk) : 'Rp 0'}
+              {uangMasukHariIni > 0 ? formatRupiah(uangMasukHariIni) : 'Rp 0'}
             </p>
           </div>
         </div>
@@ -162,12 +145,12 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Quick Actions — CTA Raksasa */}
+        {/* Quick Actions */}
         <div>
           <p className="section-label">Aksi Cepat</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <Link href="/bon-baru" className="btn-cta btn-cta-blue" style={{ 
-              textDecoration: 'none', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '20px 12px' 
+            <Link href="/bon-baru" className="btn-cta btn-cta-blue" style={{
+              textDecoration: 'none', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '20px 12px'
             }}>
               <span className="btn-cta__icon" style={{ width: '56px', height: '56px', fontSize: '32px', marginBottom: '8px' }}>📝</span>
               <span className="btn-cta__text" style={{ alignItems: 'center' }}>
@@ -175,8 +158,8 @@ export default function DashboardPage() {
                 <span className="btn-cta__sublabel" style={{ textAlign: 'center', fontSize: '12px', marginTop: '4px' }}>Kredit baru</span>
               </span>
             </Link>
-            <Link href="/pembayaran" className="btn-cta btn-cta-green" style={{ 
-              textDecoration: 'none', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '20px 12px' 
+            <Link href="/pembayaran" className="btn-cta btn-cta-green" style={{
+              textDecoration: 'none', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '20px 12px'
             }}>
               <span className="btn-cta__icon" style={{ width: '56px', height: '56px', fontSize: '32px', marginBottom: '8px' }}>💰</span>
               <span className="btn-cta__text" style={{ alignItems: 'center' }}>
@@ -190,8 +173,8 @@ export default function DashboardPage() {
         {/* Summary row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
           {[
-            { label: 'Total Pelanggan', value: dbCustomers.length, color: 'var(--primary)' },
-            { label: 'Blacklist', value: dbCustomers.filter(c => c.status === 'BLACKLIST').length, color: 'var(--danger)' },
+            { label: 'Total Pelanggan', value: customers.length, color: 'var(--primary)' },
+            { label: 'Blacklist', value: customers.filter((c: any) => c.status === 'BLACKLIST').length, color: 'var(--danger)' },
             { label: 'Menunggak', value: menunggakCount, color: 'var(--warning)' },
           ].map(stat => (
             <div key={stat.label} className="card" style={{ textAlign: 'center', padding: '14px 8px' }}>
@@ -238,17 +221,14 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {dbCustomers.filter(c => c.total_hutang > 0).slice(0, 3).map(customer => (
+            {customers.filter((c: any) => c.total_hutang > 0).slice(0, 3).map((customer: any) => (
               <Link key={customer.id} href={`/pelanggan/${customer.id}`} className="list-item" style={{ textDecoration: 'none' }}>
                 <div className="list-item__avatar">
                   {customer.nama.charAt(0)}
                 </div>
                 <div className="list-item__info">
                   <p className="list-item__name">{customer.nama}</p>
-                  <p className="list-item__sub">
-                    {/* Placeholder for last payment days ago since it requires join or parsing payments */}
-                    Ada tunggakan
-                  </p>
+                  <p className="list-item__sub">Ada tunggakan</p>
                 </div>
                 <div className="list-item__right">
                   <p style={{ fontSize: '16px', fontWeight: 700, color: customer.status === 'BLACKLIST' ? 'var(--danger)' : customer.total_hutang > 500000 ? 'var(--warning)' : 'var(--text-main)' }}>
@@ -261,7 +241,7 @@ export default function DashboardPage() {
                 </div>
               </Link>
             ))}
-            {dbCustomers.filter(c => c.total_hutang > 0).length === 0 && (
+            {customers.filter((c: any) => c.total_hutang > 0).length === 0 && (
               <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
                 Tidak ada pelanggan yang mempunyai hutang aktif.
               </div>

@@ -3,67 +3,62 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { formatRupiah, getSettings } from '@/lib/mockData'
-import { database } from '@/lib/db'
-import { Customer } from '@/lib/db/models/Customer'
 import { useAuth } from '@/lib/auth'
 
 function PembayaranForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const preSelectId  = searchParams.get('pelanggan')
+  const preSelectId = searchParams.get('pelanggan')
   const { user } = useAuth()
 
-  const [dbCustomers, setDbCustomers] = useState<Customer[]>([])
+  const [dbCustomers, setDbCustomers] = useState<any[]>([])
   useEffect(() => {
-    const sub = database.collections.get('customers').query().observe().subscribe((data: Customer[]) => setDbCustomers(data))
-    return () => sub.unsubscribe()
+    fetch('/api/customers').then(r => r.json()).then(data => setDbCustomers(data)).catch(console.error)
   }, [])
 
-  const [search, setSearch]   = useState('')
+  const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(preSelectId || '')
   const [showDropdown, setShowDropdown] = useState(false)
   const [nominal, setNominal] = useState('')
-  const [saved, setSaved]     = useState(false)
+  const [saved, setSaved] = useState(false)
   const [showReceipt, setShowReceipt] = useState(false)
-  
-  const settings = getSettings()
+  const [sisaHutang, setSisaHutang] = useState(0)
 
+  const settings = getSettings()
   const customer = dbCustomers.find(c => c.id === selected)
   const nominalNum = parseInt(nominal.replace(/\D/g, '')) || 0
-  const sisaHutang = customer ? (saved ? customer.total_hutang : Math.max(0, customer.total_hutang - nominalNum)) : 0
+  const previewSisa = customer ? Math.max(0, customer.total_hutang - nominalNum) : 0
   const isLunas = saved ? (sisaHutang <= 0) : (customer && nominalNum >= customer.total_hutang)
 
   const filteredCustomers = dbCustomers.filter(c =>
-    c.total_hutang > 0 &&
-    c.nama.toLowerCase().includes(search.toLowerCase())
+    c.total_hutang > 0 && c.nama.toLowerCase().includes(search.toLowerCase())
   )
 
   const handleSave = async () => {
-    if (!selected)   { alert('Pilih pelanggan!'); return }
-    if (!nominal)    { alert('Masukkan jumlah pembayaran!'); return }
+    if (!selected) { alert('Pilih pelanggan!'); return }
+    if (!nominal) { alert('Masukkan jumlah pembayaran!'); return }
     if (nominalNum <= 0) { alert('Jumlah harus lebih dari 0!'); return }
-    
+
     try {
-      await database.write(async () => {
-        // 1. Buat Pembayaran
-        await database.collections.get('payments').create((p: any) => {
-          p.customer.set(customer)
-          p.nominal_bayar = nominalNum
-          p.tanggal_bayar = new Date()
-          p.created_by = user?.id || null
-        })
-        
-        // 2. Update Hutang
-        await customer!.update((c: any) => {
-          c.total_hutang = sisaHutang
-          if (sisaHutang <= 0) {
-            c.status = 'LANCAR'
-          }
+      const id = crypto.randomUUID()
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          customer_id: selected,
+          nominal_bayar: nominalNum,
+          tanggal_bayar: Date.now(),
+          created_by: user?.id || null,
         })
       })
-
+      if (!res.ok) throw new Error('Gagal menyimpan')
+      setSisaHutang(previewSisa)
       setSaved(true)
       setShowReceipt(true)
+      // Refresh customer data
+      const updatedList = await fetch('/api/customers').then(r => r.json())
+      setDbCustomers(updatedList)
     } catch (err) {
       console.error(err)
       alert('Gagal menyimpan pembayaran')
@@ -76,19 +71,18 @@ function PembayaranForm() {
     <div>
       <div style={{
         background: 'linear-gradient(135deg, var(--success) 0%, #155f38 100%)',
-        padding: '20px',
-        color: 'white',
+        padding: '20px', color: 'white',
       }}>
-        <button onClick={() => router.back()} style={{ 
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            background: 'white', color: 'var(--primary-dark)', 
-            padding: '8px 16px', borderRadius: '50px', 
-            border: 'none', cursor: 'pointer',
-            fontSize: '16px', fontWeight: 700,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)', marginBottom: '16px'
-          }}>
-            <span style={{ fontSize: '20px' }}>←</span> Kembali
-          </button>
+        <button onClick={() => router.back()} style={{
+          display: 'inline-flex', alignItems: 'center', gap: '8px',
+          background: 'white', color: 'var(--primary-dark)',
+          padding: '8px 16px', borderRadius: '50px',
+          border: 'none', cursor: 'pointer',
+          fontSize: '16px', fontWeight: 700,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)', marginBottom: '16px'
+        }}>
+          <span style={{ fontSize: '20px' }}>←</span> Kembali
+        </button>
         <h1 style={{ fontSize: '22px', fontWeight: 800 }}>💰 Bayar Kredit</h1>
         <p style={{ fontSize: '14px', opacity: 0.85 }}>Catat pembayaran pelanggan</p>
       </div>
@@ -102,7 +96,6 @@ function PembayaranForm() {
       )}
 
       <div className="page-body">
-        {/* Search Pelanggan */}
         {!selected ? (
           <div className="card-elevated">
             <p className="section-label" style={{ marginBottom: '12px' }}>Cari Pelanggan</p>
@@ -130,19 +123,14 @@ function PembayaranForm() {
                         width: '100%', padding: '14px 16px', background: 'none', border: 'none',
                         textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '14px',
                         borderBottom: '1px solid var(--border)', fontFamily: 'inherit',
-                        transition: 'background 0.1s',
                       }}>
-                      <div className="list-item__avatar" style={{ width: 44, height: 44, fontSize: '18px' }}>
-                        {c.nama.charAt(0)}
-                      </div>
+                      <div className="list-item__avatar" style={{ width: 44, height: 44, fontSize: '18px' }}>{c.nama.charAt(0)}</div>
                       <div style={{ flex: 1 }}>
                         <p style={{ fontSize: '17px', fontWeight: 700 }}>{c.nama}</p>
                         <p style={{ fontSize: '14px', color: 'var(--text-sub)', marginTop: '2px' }}>{c.alamat}</p>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '18px', fontWeight: 800, color: 'var(--danger)' }}>
-                          {formatRupiah(c.total_hutang)}
-                        </p>
+                        <p style={{ fontSize: '18px', fontWeight: 800, color: 'var(--danger)' }}>{formatRupiah(c.total_hutang)}</p>
                         <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Sisa hutang</p>
                       </div>
                     </button>
@@ -156,7 +144,6 @@ function PembayaranForm() {
               )}
             </div>
 
-            {/* Quick list */}
             <p className="section-label" style={{ marginTop: '20px' }}>Pelanggan dengan Hutang Terbesar</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {dbCustomers.filter(c => c.total_hutang > 0).sort((a, b) => b.total_hutang - a.total_hutang).slice(0, 4).map(c => (
@@ -175,22 +162,18 @@ function PembayaranForm() {
           </div>
         ) : (
           <>
-            {/* Selected customer + hutang display */}
+            {/* Selected customer display */}
             <div className="card-elevated" style={{ textAlign: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="list-item__avatar" style={{ width: 48, height: 48, fontSize: '20px' }}>
-                    {customer?.nama.charAt(0)}
-                  </div>
+                  <div className="list-item__avatar" style={{ width: 48, height: 48, fontSize: '20px' }}>{customer?.nama.charAt(0)}</div>
                   <div style={{ textAlign: 'left' }}>
                     <p style={{ fontSize: '18px', fontWeight: 700 }}>{customer?.nama}</p>
                     <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{customer?.alamat}</p>
                   </div>
                 </div>
                 <button onClick={() => { setSelected(''); setNominal(''); setSaved(false); setShowReceipt(false) }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: 'var(--text-muted)' }}>
-                  ✕
-                </button>
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: 'var(--text-muted)' }}>✕</button>
               </div>
               <p style={{ fontSize: '14px', color: 'var(--text-sub)', marginBottom: '4px' }}>Total Sisa Hutang</p>
               <p className="big-number" style={{ fontSize: '52px', color: 'var(--danger)' }}>
@@ -212,14 +195,13 @@ function PembayaranForm() {
                     type="text"
                     inputMode="numeric"
                     placeholder="0"
-                    value={nominal ? new Intl.NumberFormat('id-ID').format(parseInt(nominal.toString().replace(/\D/g, ''), 10) || 0) : ''}
+                    value={nominal ? new Intl.NumberFormat('id-ID').format(parseInt(nominal.replace(/\D/g, ''), 10) || 0) : ''}
                     onChange={e => setNominal(e.target.value.replace(/\D/g, ''))}
                     style={{ paddingLeft: '52px', fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', height: '72px' }}
                     autoFocus
                   />
                 </div>
 
-                {/* Quick amounts */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '12px' }}>
                   {[50000, 100000, 200000, 250000, 500000, customer?.total_hutang || 0].map(amt => (
                     <button key={amt} onClick={() => setNominal(String(amt))} style={{
@@ -236,7 +218,7 @@ function PembayaranForm() {
                   <div style={{ marginTop: '16px', padding: '14px', background: isLunas ? 'var(--success-light)' : 'var(--warning-light)', borderRadius: 'var(--radius-md)' }}>
                     <p style={{ fontSize: '14px', color: 'var(--text-sub)' }}>Sisa setelah bayar:</p>
                     <p style={{ fontSize: '28px', fontWeight: 800, color: isLunas ? 'var(--success)' : 'var(--warning)' }}>
-                      {isLunas ? '🎉 LUNAS!' : formatRupiah(sisaHutang)}
+                      {isLunas ? '🎉 LUNAS!' : formatRupiah(previewSisa)}
                     </p>
                   </div>
                 )}
@@ -264,44 +246,26 @@ function PembayaranForm() {
                   </div>
                   <hr />
                   <div style={{ fontSize: '18px', padding: '8px 0', lineHeight: 2 }}>
-                    <p>
-                      Pelanggan : <strong>{customer?.nama}</strong>
-                    </p>
-                    <p>
-                      Bayar     : <strong style={{ fontSize: '22px' }}>{formatRupiah(nominalNum)}</strong>
-                    </p>
-                    <p style={{ 
-                      marginTop: '12px',
-                      fontSize: '24px', 
-                      fontWeight: 900, 
-                      background: 'var(--warning-light)', 
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      border: '2px dashed var(--warning)',
-                      color: 'var(--danger)',
-                      display: 'inline-block',
-                      width: '100%'
+                    <p>Pelanggan : <strong>{customer?.nama}</strong></p>
+                    <p>Bayar     : <strong style={{ fontSize: '22px' }}>{formatRupiah(nominalNum)}</strong></p>
+                    <p style={{
+                      marginTop: '12px', fontSize: '24px', fontWeight: 900,
+                      background: 'var(--warning-light)', padding: '8px 12px',
+                      borderRadius: '8px', border: '2px dashed var(--warning)',
+                      color: 'var(--danger)', display: 'inline-block', width: '100%'
                     }}>
-                      Sisa      : {isLunas ? 'LUNAS' : formatRupiah(sisaHutang)}
+                      Sisa : {sisaHutang <= 0 ? 'LUNAS' : formatRupiah(sisaHutang)}
                     </p>
                   </div>
                   <hr />
                   <p style={{ textAlign: 'center', fontSize: '13px' }}>
-                    {isLunas
-                      ? '🎉 Terima kasih! Hutang Anda sudah LUNAS!'
-                      : `Terima kasih! Sisa hutang Anda ${formatRupiah(sisaHutang)}`}
+                    {sisaHutang <= 0 ? '🎉 Terima kasih! Hutang Anda sudah LUNAS!' : `Terima kasih! Sisa hutang Anda ${formatRupiah(sisaHutang)}`}
                   </p>
                   <hr style={{ margin: '12px 0' }} />
-                  <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-sub)' }}>
-                    {settings.teks_struk}
-                  </p>
+                  <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
                 </div>
-                <button className="btn btn-primary btn-xl btn-full" style={{ marginTop: '12px' }}>
-                  🖨️ Cetak Struk (Bluetooth)
-                </button>
-                <button onClick={() => router.push('/')} className="btn btn-ghost btn-lg btn-full" style={{ marginTop: '8px' }}>
-                  Kembali ke Beranda
-                </button>
+                <button className="btn btn-primary btn-xl btn-full" style={{ marginTop: '12px' }}>🖨️ Cetak Struk (Bluetooth)</button>
+                <button onClick={() => router.push('/')} className="btn btn-ghost btn-lg btn-full" style={{ marginTop: '8px' }}>Kembali ke Beranda</button>
               </div>
             )}
           </>

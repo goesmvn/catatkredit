@@ -3,9 +3,6 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { formatRupiah } from '@/lib/mockData'
-import { database } from '@/lib/db'
-import { Customer } from '@/lib/db/models/Customer'
-import { Transaction } from '@/lib/db/models/Transaction'
 import { getSettings } from '@/lib/mockData'
 
 type CustomerStatus = 'LANCAR' | 'BLACKLIST' | 'MENUNGGAK'
@@ -13,51 +10,48 @@ type CustomerStatus = 'LANCAR' | 'BLACKLIST' | 'MENUNGGAK'
 export default function PelangganPage() {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<CustomerStatus | 'ALL'>('ALL')
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [customers, setCustomers] = useState<any[]>([])
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const settings = getSettings()
 
-  useEffect(() => {
-    // Observe customer and transaction changes from WatermelonDB
-    const custSub = database.collections.get('customers').query().observe().subscribe((data: Customer[]) => setCustomers(data))
-    const txSub = database.collections.get('transactions').query().observe().subscribe((data: Transaction[]) => setTransactions(data))
-    
-    return () => {
-      custSub.unsubscribe()
-      txSub.unsubscribe()
+  const fetchData = async () => {
+    try {
+      const [custRes, txRes] = await Promise.all([
+        fetch('/api/customers'),
+        fetch('/api/transactions'),
+      ])
+      setCustomers(await custRes.json())
+      setTransactions(await txRes.json())
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
+    fetchData()
   }, [])
 
-  const getDynamicStatus = (c: Customer): CustomerStatus => {
+  const getDynamicStatus = (c: any): CustomerStatus => {
     if (c.status === 'BLACKLIST') return 'BLACKLIST'
     if (c.total_hutang <= 0) return 'LANCAR'
-    
     const nowMs = Date.now()
     const batasMs = (settings.batas_menunggak_hari || 30) * 86400000
-    const unpaidTxs = transactions.filter(t => (t as any)._raw.customer_id === c.id && t.status !== 'LUNAS')
-    
-    const isMenunggak = unpaidTxs.some(t => {
-      const txDate = new Date(t.tanggal).getTime()
-      return (nowMs - txDate) > batasMs
-    })
-    
-    return isMenunggak ? 'MENUNGGAK' : 'LANCAR'
+    const unpaidTxs = transactions.filter(t => t.customer_id === c.id && t.status !== 'LUNAS')
+    return unpaidTxs.some(t => (nowMs - t.tanggal) > batasMs) ? 'MENUNGGAK' : 'LANCAR'
   }
 
   const filtered = customers.filter(c => {
     const matchSearch = c.nama.toLowerCase().includes(search.toLowerCase()) ||
       (c.alamat && c.alamat.toLowerCase().includes(search.toLowerCase()))
-    
     const dynamicStatus = getDynamicStatus(c)
-    const matchStatus = filterStatus === 'ALL' || dynamicStatus === filterStatus
-    
-    return matchSearch && matchStatus
+    return matchSearch && (filterStatus === 'ALL' || dynamicStatus === filterStatus)
   })
 
-  // Calculate days since a date
-  const daysSince = (d: number): number => {
-    const diff = Date.now() - d
-    return Math.floor(diff / 86400000)
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: '60px 20px', fontSize: '18px' }}>Memuat data...</div>
   }
 
   return (
@@ -95,17 +89,11 @@ export default function PelangganPage() {
               key={val}
               onClick={() => setFilterStatus(val)}
               style={{
-                padding: '8px 16px',
-                borderRadius: '999px',
-                border: '2px solid',
+                padding: '8px 16px', borderRadius: '999px', border: '2px solid',
                 borderColor: filterStatus === val ? 'var(--primary)' : 'var(--border)',
                 background: filterStatus === val ? 'var(--primary)' : 'var(--white)',
                 color: filterStatus === val ? 'white' : 'var(--text-main)',
-                fontFamily: 'inherit',
-                fontSize: '15px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
+                fontFamily: 'inherit', fontSize: '15px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s ease',
               }}
             >
               {label}
@@ -132,8 +120,7 @@ export default function PelangganPage() {
                 <div className="list-item__avatar" style={{
                   background: getDynamicStatus(c) === 'BLACKLIST' ? 'var(--danger-light)' : getDynamicStatus(c) === 'MENUNGGAK' ? 'var(--warning-light)' : 'var(--primary-light)',
                   color: getDynamicStatus(c) === 'BLACKLIST' ? 'var(--danger)' : getDynamicStatus(c) === 'MENUNGGAK' ? 'var(--warning)' : 'var(--primary)',
-                  fontSize: '22px',
-                  fontWeight: 700,
+                  fontSize: '22px', fontWeight: 700,
                 }}>
                   {c.nama.charAt(0)}
                 </div>
@@ -141,8 +128,7 @@ export default function PelangganPage() {
                   <p className="list-item__name">{c.nama}</p>
                   <p className="list-item__sub" style={{ marginTop: '2px' }}>{c.alamat || '-'}</p>
                   <p className="list-item__sub">
-                    {/* Wait, we don't have last_payment in Customer model easily without joining */}
-                    Terdaftar: {new Date(c.createdAt).toLocaleDateString('id-ID')}
+                    Terdaftar: {new Date(c.created_at).toLocaleDateString('id-ID')}
                   </p>
                 </div>
                 <div className="list-item__right" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>

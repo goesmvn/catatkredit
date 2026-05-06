@@ -56,24 +56,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return {}
     }
     
-    // 2. Cek WatermelonDB Lokal (Profiles akan tersinkronisasi)
+    // 2. Cek via API server (SQLite)
     try {
-      const { database } = await import('@/lib/db')
-      const q = await database.collections.get('profiles').query().fetch()
-      const found = q.find((p: any) => p.username === username.toLowerCase() && p.pin === pin)
-      if (found) {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.toLowerCase(), pin })
+      })
+      if (res.ok) {
+        const found = await res.json()
         const u: UserProfile = {
           id: found.id,
-          username: (found as any).username,
-          nama_lengkap: (found as any).nama_lengkap,
-          role: (found as any).role as Role
+          username: found.username,
+          nama_lengkap: found.nama_lengkap,
+          role: found.role as Role
         }
         setUser(u)
         localStorage.setItem('catatbon_user', JSON.stringify(u))
         return {}
       }
     } catch (err) {
-      console.error('Local auth check failed', err)
+      console.error('API auth check failed', err)
     }
     
     return { error: 'Username atau PIN salah.' }
