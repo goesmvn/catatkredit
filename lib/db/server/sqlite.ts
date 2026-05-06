@@ -7,11 +7,19 @@ const dbPath = process.env.SQLITE_DB_PATH || path.join(process.cwd(), 'catatbon.
 const db = new Database(dbPath);
 
 // Konfigurasi performa SQLite
-db.pragma('journal_mode = WAL');
+try {
+  db.pragma('journal_mode = WAL');
+} catch (e) {
+  console.warn('SQLite WAL mode could not be set (possibly during build):', e);
+}
+
+let isInitialized = false;
 
 // Migrasi skema (Eksekusi sekali saat server mulai)
 export function initDB() {
-  db.exec(`
+  if (isInitialized) return;
+  try {
+    db.exec(`
     CREATE TABLE IF NOT EXISTS profiles (
       id TEXT PRIMARY KEY,
       username TEXT,
@@ -91,6 +99,10 @@ export function initDB() {
       `INSERT INTO profiles (id, username, nama_lengkap, role, pin, created_at, updated_at)
        VALUES ('admin-local-id', 'admin', 'Admin Utama', 'ADMIN', '123456', ?, ?)`
     ).run(now, now);
+    }
+    isInitialized = true;
+  } catch (e) {
+    console.warn('SQLite initialization skipped or failed (possibly during build):', e);
   }
 }
 
