@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { db, initDB } from '@/lib/db/server/sqlite';
 
 initDB();
@@ -12,7 +13,14 @@ export async function GET() {
     const totalPiutang = customers.reduce((s: number, c: any) => s + (c.total_hutang || 0), 0);
     const todayStr = new Date().toISOString().split('T')[0];
     const uangMasukHariIni = payments
-      .filter((p: any) => new Date(p.tanggal_bayar).toISOString().split('T')[0] === todayStr)
+      .filter((p: any) => {
+        if (!p.tanggal_bayar) return false;
+        try {
+          return new Date(p.tanggal_bayar).toISOString().split('T')[0] === todayStr;
+        } catch (err) {
+          return false;
+        }
+      })
       .reduce((s: number, p: any) => s + (p.nominal_bayar || 0), 0);
 
     return NextResponse.json({

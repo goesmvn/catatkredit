@@ -14,10 +14,14 @@ export default function DashboardPage() {
   const fetchDashboard = async () => {
     try {
       const res = await fetch('/api/dashboard')
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
       const json = await res.json()
       setData(json)
     } catch (e) {
-      console.error(e)
+      console.error("Dashboard fetch error:", e)
+      setData({ totalPiutang: 0, uangMasukHariIni: 0, customers: [], transactions: [], payments: [] })
     } finally {
       setLoading(false)
     }

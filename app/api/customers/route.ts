@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { db, initDB } from '@/lib/db/server/sqlite';
 
 initDB();
