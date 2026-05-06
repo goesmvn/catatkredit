@@ -34,20 +34,26 @@ ENV NODE_ENV production
 # Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Required for sqlite to work locally and save to persistent volume
-RUN mkdir -p /app/data && chown -R node:node /app/data
-ENV SQLITE_DB_PATH=/app/data/catatbon.db
-
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+
+# Required for sqlite to work locally and save to persistent volume
+RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
+ENV SQLITE_DB_PATH=/app/data/catatbon.db
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-USER nextjs
+# Pastikan native module tersalin karena Next.js standalone kadang melewatkannya
+COPY --from=deps /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
+COPY --from=deps /app/node_modules/bindings ./node_modules/bindings
+COPY --from=deps /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path
+
+# USER nextjs dikomentari agar bisa read/write ke volume Docker (SQLite)
+# USER nextjs
 
 EXPOSE 3000
 
