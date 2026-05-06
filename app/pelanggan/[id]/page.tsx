@@ -18,6 +18,9 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
   const [showModal, setShowModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editForm, setEditForm] = useState({ nama: '', alamat: '', no_hp: '', ciri_ciri: '' })
+  
+  const [showEditTxModal, setShowEditTxModal] = useState(false)
+  const [editTxForm, setEditTxForm] = useState({ id: '', total_harga: 0, status: '' })
 
   const fetchData = useCallback(async () => {
     try {
@@ -80,6 +83,42 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
   const handleEditClick = () => {
     setEditForm({ nama: customer.nama, alamat: customer.alamat || '', no_hp: customer.no_hp || '', ciri_ciri: customer.ciri_ciri || '' })
     setShowEditModal(true)
+  }
+
+  const handleEditTxClick = (tx: any) => {
+    setEditTxForm({ id: tx.id, total_harga: tx.total_harga, status: tx.status })
+    setShowEditTxModal(true)
+  }
+
+  const handleSaveEditTx = async () => {
+    try {
+      const res = await fetch(`/api/transactions/${editTxForm.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ total_harga: editTxForm.total_harga, status: editTxForm.status })
+      })
+      if (!res.ok) throw new Error('Gagal mengupdate')
+      setShowEditTxModal(false)
+      fetchData()
+    } catch (e) {
+      console.error(e)
+      alert('Terjadi kesalahan saat mengupdate transaksi')
+    }
+  }
+
+  const handleDeleteTransaction = async (txId: string, total: number) => {
+    if (!window.confirm(`Hapus transaksi senilai ${formatRupiah(total)}? Saldo hutang pelanggan akan otomatis dikurangi.`)) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/transactions/${txId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Gagal menghapus')
+      fetchData()
+    } catch (e) {
+      console.error(e)
+      alert('Terjadi kesalahan saat menghapus transaksi')
+    }
   }
 
   return (
@@ -247,10 +286,32 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
                         {formatRupiah(tx.total_harga)}
                       </p>
                     </div>
-                    <span className={`status-badge ${tx.status === 'LUNAS' ? 'status-lunas' : 'status-belum-lunas'}`}
-                      style={{ fontSize: '12px', padding: '4px 12px', fontWeight: 700 }}>
-                      {tx.status === 'LUNAS' ? '✅ Lunas' : '⏳ Ngutang'}
-                    </span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button 
+                        onClick={() => handleEditTxClick(tx)}
+                        style={{ 
+                          background: 'var(--primary-light)', border: 'none', 
+                          color: 'var(--primary)', padding: '4px 8px', 
+                          borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+                          cursor: 'pointer'
+                        }}>
+                        ✏️ Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteTransaction(tx.id, tx.total_harga)}
+                        style={{ 
+                          background: 'var(--danger-light)', border: 'none', 
+                          color: 'var(--danger)', padding: '4px 8px', 
+                          borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+                          cursor: 'pointer'
+                        }}>
+                        🗑️ Hapus
+                      </button>
+                      <span className={`status-badge ${tx.status === 'LUNAS' ? 'status-lunas' : 'status-belum-lunas'}`}
+                        style={{ fontSize: '12px', padding: '4px 12px', fontWeight: 700 }}>
+                        {tx.status === 'LUNAS' ? '✅ Lunas' : '⏳ Ngutang'}
+                      </span>
+                    </div>
                   </div>
                   <div style={{ background: 'var(--bg)', padding: '12px', borderRadius: '12px' }}>
                     <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-sub)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -349,7 +410,7 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
         </div>
       )}
 
-      {/* MODAL EDIT DATA */}
+      {/* MODAL EDIT DATA PELANGGAN */}
       {showEditModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -383,6 +444,50 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <button onClick={handleSaveEdit} className="btn btn-primary btn-xl btn-full">Simpan Perubahan</button>
               <button onClick={() => setShowEditModal(false)} className="btn btn-ghost btn-xl btn-full">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT TRANSAKSI */}
+      {showEditTxModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', zIndex: 100,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--white)', borderRadius: '24px', width: '100%', maxWidth: '400px',
+            padding: '32px 24px', textAlign: 'left', boxShadow: 'var(--shadow-xl)'
+          }}>
+            <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '24px' }}>✏️ Edit Transaksi</h2>
+            <div style={{ display: 'grid', gap: '16px', marginBottom: '32px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-sub)', marginBottom: '8px' }}>Total Harga (Rp)</label>
+                <input
+                  type="number"
+                  value={editTxForm.total_harga}
+                  onChange={e => setEditTxForm(prev => ({ ...prev, total_harga: parseInt(e.target.value) || 0 }))}
+                  className="form-input"
+                />
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>* Mengubah total akan memperbarui hutang pelanggan.</p>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-sub)', marginBottom: '8px' }}>Status</label>
+                <select 
+                  value={editTxForm.status} 
+                  onChange={e => setEditTxForm(prev => ({ ...prev, status: e.target.value }))}
+                  className="form-input"
+                  style={{ width: '100%' }}
+                >
+                  <option value="BELUM_LUNAS">BELUM LUNAS (Ngutang)</option>
+                  <option value="LUNAS">LUNAS</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button onClick={handleSaveEditTx} className="btn btn-primary btn-xl btn-full">Simpan Perubahan</button>
+              <button onClick={() => setShowEditTxModal(false)} className="btn btn-ghost btn-xl btn-full">Batal</button>
             </div>
           </div>
         </div>

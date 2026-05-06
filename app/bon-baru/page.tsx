@@ -127,6 +127,11 @@ function BonBaruForm() {
       return
     }
 
+    if (!window.confirm(`Simpan kredit sebesar ${formatRupiah(grandTotal)} untuk ${selectedCustomer.nama}?`)) {
+      return
+    }
+
+    setIsSaving(true)
     try {
       const id = crypto.randomUUID()
       const res = await fetch('/api/transactions', {
@@ -155,6 +160,8 @@ function BonBaruForm() {
     } catch (error) {
       console.error(error)
       alert('Terjadi kesalahan saat menyimpan kredit')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -381,13 +388,17 @@ function BonBaruForm() {
               {formatRupiah(grandTotal)}
             </p>
           </div>
-          <button onClick={handleSave} className="btn btn-primary"
+          <button 
+            onClick={handleSave} 
+            className="btn btn-primary"
+            disabled={isSaving || grandTotal === 0 || !selectedCustomerId}
             style={{
               padding: '16px 32px', borderRadius: '100px', fontSize: '18px', fontWeight: 800,
               boxShadow: '0 8px 20px rgba(27,108,168,0.35)',
-              opacity: grandTotal > 0 && selectedCustomerId ? 1 : 0.6,
+              opacity: (grandTotal > 0 && selectedCustomerId && !isSaving) ? 1 : 0.6,
+              cursor: isSaving ? 'not-allowed' : 'pointer'
             }}>
-            Simpan Kredit
+            {isSaving ? 'Menyimpan...' : 'Simpan Kredit'}
           </button>
         </div>
       </div>
