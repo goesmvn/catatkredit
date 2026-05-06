@@ -5,4 +5,9 @@ node_modules
 *.log
 npm-debug.log*
 .DS_Store
-PRD.mdcatatbon.db*
+PRD.md
+catatbon.db*
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
