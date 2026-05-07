@@ -14,6 +14,8 @@ function getDB() {
     } catch (e) {
       console.warn('SQLite WAL mode could not be set:', e);
     }
+    // Automatically run init every time a new DB instance is opened
+    _runInit(dbInstance);
   }
   return dbInstance;
 }
@@ -31,13 +33,15 @@ export const db = {
   }
 };
 
-let isInitialized = false;
+// Gunakan user_version di database sebagai flag migrasi (lebih reliabel dari variabel in-memory)
+const SCHEMA_VERSION = 1;
 
-// Migrasi skema (Eksekusi sekali saat server mulai)
-export function initDB() {
-  if (isInitialized) return;
+function _runInit(instance: any) {
   try {
-    db.exec(`
+    const currentVersion = instance.pragma('user_version', { simple: true });
+    if (currentVersion >= SCHEMA_VERSION) return;
+
+    instance.exec(`
     CREATE TABLE IF NOT EXISTS profiles (
       id TEXT PRIMARY KEY,
       username TEXT,
@@ -109,26 +113,29 @@ export function initDB() {
     );
   `);
 
-  // Seed default users jika belum ada
-  const adminExists = db.prepare("SELECT id FROM profiles WHERE username = 'admin'").get();
-  if (!adminExists) {
-    const now = Date.now();
-    // Default Admin
-    db.prepare(
-      `INSERT INTO profiles (id, username, nama_lengkap, role, pin, created_at, updated_at)
-       VALUES (?, 'admin', 'Admin Toko', 'ADMIN', '123456', ?, ?)`
-    ).run(crypto.randomUUID(), now, now);
-    
-    // Default Super Admin (for maintenance)
-    db.prepare(
-      `INSERT INTO profiles (id, username, nama_lengkap, role, pin, created_at, updated_at)
-       VALUES (?, 'superadmin', 'Super Administrator', 'SUPERADMIN', '888888', ?, ?)`
-    ).run(crypto.randomUUID(), now, now);
-  }
-    isInitialized = true;
+    // Seed default users jika belum ada
+    const adminExists = instance.prepare("SELECT id FROM profiles WHERE username = 'admin'").get();
+    if (!adminExists) {
+      const now = Date.now();
+      instance.prepare(
+        `INSERT INTO profiles (id, username, nama_lengkap, role, pin, created_at, updated_at)
+         VALUES (?, 'admin', 'Admin Toko', 'ADMIN', '123456', ?, ?)`
+      ).run(crypto.randomUUID(), now, now);
+
+      instance.prepare(
+        `INSERT INTO profiles (id, username, nama_lengkap, role, pin, created_at, updated_at)
+         VALUES (?, 'superadmin', 'Super Administrator', 'SUPERADMIN', '888888', ?, ?)`
+      ).run(crypto.randomUUID(), now, now);
+    }
+
+    // Tandai migrasi selesai di database itu sendiri
+    instance.pragma(`user_version = ${SCHEMA_VERSION}`);
   } catch (e) {
-    console.warn('SQLite initialization skipped or failed (possibly during build):', e);
+    console.error('SQLite initialization error:', e);
   }
 }
 
-
+// Tetap ekspor initDB() agar API route yang sudah ada tidak perlu diubah
+export function initDB() {
+  getDB(); // cukup panggil getDB() — inisialisasi sudah terjadi di sana
+}
