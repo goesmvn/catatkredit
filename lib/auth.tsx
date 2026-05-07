@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
-export type Role = 'ADMIN' | 'KASIR'
+export type Role = 'SUPERADMIN' | 'ADMIN' | 'KASIR'
 
 interface UserProfile {
   id: string
@@ -43,13 +43,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = async (username: string, pin: string) => {
+    const lowerUsername = username.toLowerCase();
+
     // 1. Fallback Admin Default
-    if (username === 'admin' && pin === '123456') {
+    if (lowerUsername === 'admin' && pin === '123456') {
       const u: UserProfile = {
         id: 'admin-local-id',
         username: 'admin',
         nama_lengkap: 'Admin Utama',
         role: 'ADMIN'
+      }
+      setUser(u)
+      localStorage.setItem('catatbon_user', JSON.stringify(u))
+      return {}
+    }
+
+    if (lowerUsername === 'superadmin' && pin === '888888') {
+      const u: UserProfile = {
+        id: 'super-admin-id',
+        username: 'superadmin',
+        nama_lengkap: 'Super Administrator',
+        role: 'SUPERADMIN'
       }
       setUser(u)
       localStorage.setItem('catatbon_user', JSON.stringify(u))

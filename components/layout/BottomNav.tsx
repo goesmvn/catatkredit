@@ -6,12 +6,12 @@ import { useAuth } from '@/lib/auth'
 import { useEffect, useState } from 'react'
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: '🏠', roles: ['ADMIN', 'KASIR'] },
-  { href: '/pelanggan', label: 'Pelanggan', icon: '👥', roles: ['ADMIN', 'KASIR'] },
-  { href: '/bon-baru', label: 'Kredit', icon: '📝', roles: ['ADMIN', 'KASIR'] },
-  { href: '/barang', label: 'Barang', icon: '📦', roles: ['ADMIN', 'KASIR'] },
-  { href: '/laporan', label: 'Laporan', icon: '📊', roles: ['ADMIN'] },
-  { href: '/pengaturan', label: 'Setelan', icon: '⚙️', roles: ['ADMIN'] },
+  { href: '/', label: 'Dashboard', icon: '🏠', roles: ['SUPERADMIN', 'ADMIN', 'KASIR'] },
+  { href: '/pelanggan', label: 'Pelanggan', icon: '👥', roles: ['SUPERADMIN', 'ADMIN', 'KASIR'] },
+  { href: '/bon-baru', label: 'Kredit', icon: '📝', roles: ['SUPERADMIN', 'ADMIN', 'KASIR'] },
+  { href: '/barang', label: 'Barang', icon: '📦', roles: ['SUPERADMIN', 'ADMIN', 'KASIR'] },
+  { href: '/laporan', label: 'Laporan', icon: '📊', roles: ['SUPERADMIN', 'ADMIN'] },
+  { href: '/pengaturan', label: 'Setelan', icon: '⚙️', roles: ['SUPERADMIN', 'ADMIN'] },
 ]
 
 export default function BottomNav() {
@@ -160,8 +160,8 @@ export default function BottomNav() {
         )
       })}
       
-      {/* Tombol Logout khusus untuk non-ADMIN di mobile */}
-      {user.role !== 'ADMIN' && (
+      {/* Tombol Logout khusus untuk non-ADMIN & non-SUPERADMIN di mobile */}
+      {(user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') && (
         <button onClick={() => setShowLogoutModal(true)} style={{
           flex: 1, minWidth: 0,
           display: 'flex', flexDirection: 'column',

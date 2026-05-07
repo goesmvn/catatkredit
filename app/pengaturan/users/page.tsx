@@ -15,7 +15,7 @@ export default function UserManagementPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (user && user.role !== 'ADMIN') { router.push('/'); return }
+    if (user && user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') { router.push('/'); return }
     fetchUsers()
   }, [user, router])
 
@@ -58,7 +58,7 @@ export default function UserManagementPage() {
   }
 
   const handleDelete = async (u: any) => {
-    if (u.username === 'admin') { alert('Admin utama tidak dapat dihapus!'); return }
+    if (u.username === 'admin' || u.username === 'superadmin') { alert('Akun utama tidak dapat dihapus!'); return }
     if (confirm(`Apakah Anda yakin ingin menghapus pengguna ${u.nama_lengkap}?`)) {
       await fetch(`/api/profiles/${u.id}`, { method: 'DELETE' })
       fetchUsers()
@@ -67,7 +67,8 @@ export default function UserManagementPage() {
   }
 
   const openEditModal = (u: any) => {
-    if (u.username === 'admin') { alert('Admin utama tidak dapat diedit!'); return }
+    if (u.username === 'admin' || u.username === 'superadmin') { alert('Akun utama tidak dapat diedit!'); return }
+    if (u.role === 'SUPERADMIN' && user?.role !== 'SUPERADMIN') { alert('Hanya Superadmin yang dapat mengedit akun ini!'); return }
     setForm({ username: u.username, nama_lengkap: u.nama_lengkap, pin: u.pin, role: u.role })
     setEditingId(u.id)
     setShowModal(true)
@@ -92,20 +93,31 @@ export default function UserManagementPage() {
           {users.map(u => (
             <div key={u.id} className="card list-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <div className="list-item__avatar" style={{ background: u.role === 'ADMIN' ? 'var(--warning-light)' : 'var(--primary-light)', color: u.role === 'ADMIN' ? 'var(--warning)' : 'var(--primary)' }}>
-                  {u.role === 'ADMIN' ? '👑' : '👨‍💼'}
+                <div className="list-item__avatar" style={{ 
+                  background: u.role === 'SUPERADMIN' ? 'var(--danger-light)' : u.role === 'ADMIN' ? 'var(--warning-light)' : 'var(--primary-light)', 
+                  color: u.role === 'SUPERADMIN' ? 'var(--danger)' : u.role === 'ADMIN' ? 'var(--warning)' : 'var(--primary)' 
+                }}>
+                  {u.role === 'SUPERADMIN' ? '🛡️' : u.role === 'ADMIN' ? '👑' : '👨‍💼'}
                 </div>
                 <div>
                   <p style={{ fontSize: '16px', fontWeight: 700 }}>{u.nama_lengkap}</p>
                   <p style={{ fontSize: '14px', color: 'var(--text-sub)', marginTop: '2px' }}>
-                    @{u.username} • <span style={{ fontWeight: 600, color: u.role === 'ADMIN' ? 'var(--warning)' : 'var(--primary)' }}>{u.role}</span>
+                    @{u.username} • <span style={{ 
+                      fontWeight: 600, 
+                      color: u.role === 'SUPERADMIN' ? 'var(--danger)' : u.role === 'ADMIN' ? 'var(--warning)' : 'var(--primary)' 
+                    }}>{u.role}</span>
                   </p>
                 </div>
               </div>
-              {u.username !== 'admin' && (
+              {(u.username !== 'admin' && u.username !== 'superadmin') && (
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => openEditModal(u)} className="btn btn-ghost" style={{ padding: '8px', minHeight: 'auto' }}>✏️</button>
-                  <button onClick={() => handleDelete(u)} className="btn btn-ghost" style={{ padding: '8px', minHeight: 'auto', color: 'var(--danger)' }}>🗑️</button>
+                  {/* Sembunyikan tombol edit/hapus untuk superadmin jika kita bukan superadmin */}
+                  {!(u.role === 'SUPERADMIN' && user?.role !== 'SUPERADMIN') && (
+                    <>
+                      <button onClick={() => openEditModal(u)} className="btn btn-ghost" style={{ padding: '8px', minHeight: 'auto' }}>✏️</button>
+                      <button onClick={() => handleDelete(u)} className="btn btn-ghost" style={{ padding: '8px', minHeight: 'auto', color: 'var(--danger)' }}>🗑️</button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -146,6 +158,9 @@ export default function UserManagementPage() {
                 <select className="form-select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                   <option value="KASIR">Kasir (Hanya Input)</option>
                   <option value="ADMIN">Admin (Akses Penuh)</option>
+                  {user?.role === 'SUPERADMIN' && (
+                    <option value="SUPERADMIN">Superadmin (Maintenance)</option>
+                  )}
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>

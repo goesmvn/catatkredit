@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 export const dynamic = 'force-dynamic';
 import { db, initDB } from '@/lib/db/server/sqlite';
 
@@ -26,10 +27,19 @@ export async function POST(request: Request) {
       ).run(id, customer_id, total_harga, tanggal || now, status || 'BELUM_LUNAS', created_by || null, now, now);
 
       for (const item of (items || [])) {
+        // 1. Simpan ke detail transaksi
         db.prepare(
           `INSERT INTO transaction_items (id, transaction_id, item_tag_name, nama_barang, qty, harga_satuan, subtotal, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(item.id, id, item.item_tag_name || null, item.nama_barang, item.qty, item.harga_satuan, item.subtotal, now, now);
+        ).run(item.id, id, item.item_tag_name || item.nama_barang, item.nama_barang, item.qty, item.harga_satuan, item.subtotal, now, now);
+
+        // 2. Automatis tambah ke Master Barang (item_tags) jika belum ada
+        const existingItem = db.prepare('SELECT id FROM item_tags WHERE nama_barang = ?').get(item.nama_barang);
+        if (!existingItem) {
+          db.prepare(
+            `INSERT INTO item_tags (id, nama_barang, harga_default, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+          ).run(crypto.randomUUID(), item.nama_barang, item.harga_satuan, now, now);
+        }
       }
 
       // Update total hutang customer

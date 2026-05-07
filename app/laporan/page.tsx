@@ -38,7 +38,7 @@ export default function LaporanPage() {
     fetch('/api/transactions/items').then(r => r.ok ? r.json() : []).then(setItems).catch(() => setItems([]))
   }, [])
 
-  if (user?.role !== 'ADMIN') {
+  if (user?.role !== 'ADMIN' && user?.role !== 'SUPERADMIN') {
     return (
       <div className="empty-state">
         <span className="empty-state__icon">🔒</span>
