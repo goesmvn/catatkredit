@@ -489,7 +489,7 @@ export default function LaporanPage() {
                   </thead>
                   <tbody>
                     {customerMetrics.map(c => (
-                      <tr key={c.id} style={{ borderBottom: '1px solid var(--border)', '&:hover': { background: 'var(--bg)' } }}>
+                      <tr key={c.id} className="table-row-hover">
                         <td style={{ padding: '12px 8px' }}>
                           <Link href={`/pelanggan/${c.id}`} style={{ textDecoration: 'none', color: 'var(--primary)', fontWeight: 600 }}>
                             {c.nama}

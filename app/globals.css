@@ -792,6 +792,10 @@ body {
 .text-xl  { font-size: var(--text-xl); }
 .text-2xl { font-size: var(--text-2xl); }
 
+/* Table row hover for laporan table */
+.table-row-hover { border-bottom: 1px solid var(--border); }
+.table-row-hover:hover { background: var(--bg); }
+
 /* ---------- Item Tag Chips ---------- */
 .item-tags { display: flex; flex-wrap: wrap; gap: var(--s2); }
 
