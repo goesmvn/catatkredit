@@ -9,6 +9,7 @@ export default function PengaturanPage() {
   const { user, logout } = useAuth()
   const [settings, setSettings] = useState<AppSettings>(getSettings())
   const [showToast, setShowToast] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -42,7 +43,7 @@ export default function PengaturanPage() {
             <p style={{ fontWeight: 700, fontSize: '16px' }}>{user?.nama_lengkap}</p>
             <p style={{ color: 'var(--text-sub)', fontSize: '14px' }}>Role: {user?.role}</p>
           </div>
-          <button onClick={() => logout()} className="btn btn-outline btn-sm" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}>
+          <button onClick={() => setShowLogoutModal(true)} className="btn btn-outline btn-sm" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}>
             Keluar
           </button>
         </div>
@@ -138,6 +139,40 @@ export default function PengaturanPage() {
           animation: 'slideUp 0.3s ease'
         }}>
           ✅ Pengaturan berhasil disimpan!
+        </div>
+      )}
+      {/* MODAL KONFIRMASI LOGOUT */}
+      {showLogoutModal && (
+        <div className="overlay" style={{ zIndex: 100 }}>
+          <div className="modal-sheet">
+            <div className="modal-handle" />
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚪</div>
+              <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
+                Yakin ingin keluar?
+              </h2>
+              <p style={{ fontSize: '15px', color: 'var(--text-sub)' }}>
+                Anda harus login kembali untuk masuk ke aplikasi.
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                onClick={() => setShowLogoutModal(false)} 
+                className="btn btn-ghost btn-lg" 
+                style={{ flex: 1, borderRadius: '100px', fontWeight: 700 }}
+              >
+                Batal
+              </button>
+              <button 
+                onClick={() => { setShowLogoutModal(false); logout(); }} 
+                className="btn btn-outline btn-lg" 
+                style={{ flex: 1, borderRadius: '100px', fontWeight: 800, borderColor: 'var(--danger)', color: 'var(--danger)' }}
+              >
+                Ya, Keluar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

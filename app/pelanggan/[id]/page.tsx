@@ -1,20 +1,26 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatRupiah, formatDate, getSettings } from '@/lib/mockData'
 import { notFound } from 'next/navigation'
 
 const daysSince = (d: number): number => Math.floor((Date.now() - d) / 86400000)
 
-export default function PelangganDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default function PelangganDetailPage() {
+  const params = useParams()
+  const id = params.id as string
 
   const [customer, setCustomer] = useState<any>(null)
   const [txs, setTxs] = useState<any[]>([])
   const [payments, setPayments] = useState<any[]>([])
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
+  const [showDeleteCustomerModal, setShowDeleteCustomerModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const router = useRouter()
   const [showModal, setShowModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editForm, setEditForm] = useState({ nama: '', alamat: '', no_hp: '', ciri_ciri: '' })
@@ -23,9 +29,15 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
   const [editTxForm, setEditTxForm] = useState({ id: '', total_harga: 0, status: '' })
 
   const fetchData = useCallback(async () => {
+    if (!id) return
+    setFetchError(false)
     try {
       const res = await fetch(`/api/customers/${id}`)
-      if (!res.ok) { setLoading(false); return }
+      if (!res.ok) {
+        if (res.status === 404) setFetchError(true)
+        setLoading(false)
+        return
+      }
       const json = await res.json()
       setCustomer(json.customer)
       setTxs((json.transactions || []).sort((a: any, b: any) => b.tanggal - a.tanggal))
@@ -33,6 +45,7 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
       setItems(json.items || [])
     } catch (e) {
       console.error(e)
+      setFetchError(true)
     } finally {
       setLoading(false)
     }
@@ -40,8 +53,17 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>
-  if (!customer) return notFound()
+  if (loading) return (
+    <div style={{ padding: '40px', textAlign: 'center' }}>
+      <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-sub)' }}>⏳ Memuat data...</div>
+    </div>
+  )
+  if (fetchError || !customer) return (
+    <div style={{ padding: '40px', textAlign: 'center' }}>
+      <p style={{ fontSize: 18, fontWeight: 600 }}>❌ Data pelanggan tidak ditemukan</p>
+      <Link href="/pelanggan" style={{ color: 'var(--primary)', marginTop: 16, display: 'block' }}>← Kembali ke daftar</Link>
+    </div>
+  )
 
   const settings = getSettings()
   const nowMs = Date.now()
@@ -103,6 +125,20 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
     } catch (e) {
       console.error(e)
       alert('Terjadi kesalahan saat mengupdate transaksi')
+    }
+  }
+
+  const handleDeleteCustomer = async () => {
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/customers/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Gagal menghapus pelanggan')
+      router.push('/pelanggan')
+    } catch (e) {
+      console.error(e)
+      alert('Terjadi kesalahan saat menghapus pelanggan')
+      setIsDeleting(false)
+      setShowDeleteCustomerModal(false)
     }
   }
 
@@ -259,6 +295,21 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
           }}>
             {isBlacklisted ? '✅ Aktifkan' : '🚫 Blacklist'}
           </button>
+          {txs.length === 0 && payments.length === 0 && (
+            <button
+              onClick={() => setShowDeleteCustomerModal(true)}
+              className="btn btn-ghost btn-md"
+              style={{
+                gridColumn: '1 / -1',
+                background: 'var(--danger-light)',
+                color: 'var(--danger)',
+                border: '2px solid var(--danger)',
+                cursor: 'pointer',
+              }}
+            >
+              🗑️ Hapus Pelanggan
+            </button>
+          )}
         </div>
 
         {/* Riwayat Transaksi */}
@@ -465,10 +516,12 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-sub)', marginBottom: '8px' }}>Total Harga (Rp)</label>
                 <input
-                  type="number"
-                  value={editTxForm.total_harga}
-                  onChange={e => setEditTxForm(prev => ({ ...prev, total_harga: parseInt(e.target.value) || 0 }))}
+                  type="text"
+                  inputMode="numeric"
+                  value={editTxForm.total_harga === 0 ? '' : new Intl.NumberFormat('id-ID').format(editTxForm.total_harga)}
+                  onChange={e => setEditTxForm(prev => ({ ...prev, total_harga: parseInt(e.target.value.replace(/\D/g, ''), 10) || 0 }))}
                   className="form-input"
+                  placeholder="Contoh: 2.000.000"
                 />
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>* Mengubah total akan memperbarui hutang pelanggan.</p>
               </div>
@@ -488,6 +541,44 @@ export default function PelangganDetailPage({ params }: { params: { id: string }
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <button onClick={handleSaveEditTx} className="btn btn-primary btn-xl btn-full">Simpan Perubahan</button>
               <button onClick={() => setShowEditTxModal(false)} className="btn btn-ghost btn-xl btn-full">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL HAPUS PELANGGAN */}
+      {showDeleteCustomerModal && (
+        <div className="modal-premium">
+          <div className="modal-premium__card">
+            <div className="modal-premium__handle" />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '52px', marginBottom: '12px', animation: 'bounceIn 0.5s ease' }}>🗑️</div>
+              <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '8px', color: 'var(--danger)' }}>
+                Hapus Pelanggan?
+              </h2>
+              <p style={{ fontSize: '16px', color: 'var(--text-sub)', marginBottom: '8px', lineHeight: 1.5 }}>
+                Anda akan menghapus <strong>{customer.nama}</strong> secara permanen.
+              </p>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '28px' }}>
+                ⚠️ Tindakan ini tidak bisa dibatalkan.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <button
+                  onClick={handleDeleteCustomer}
+                  disabled={isDeleting}
+                  className={`btn btn-danger btn-xl btn-full${isDeleting ? ' btn-loading' : ''}`}
+                  style={{ cursor: isDeleting ? 'not-allowed' : 'pointer' }}
+                >
+                  {isDeleting ? '⏳ Menghapus...' : '🗑️ Ya, Hapus Pelanggan'}
+                </button>
+                <button
+                  onClick={() => setShowDeleteCustomerModal(false)}
+                  disabled={isDeleting}
+                  className="btn btn-ghost btn-xl btn-full"
+                >
+                  Batal
+                </button>
+              </div>
             </div>
           </div>
         </div>

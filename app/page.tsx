@@ -82,7 +82,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div>
+    <div style={{ paddingBottom: 'calc(var(--nav-h) + 16px)' }}>
       {/* Header */}
       <div style={{
         background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
@@ -113,10 +113,19 @@ export default function DashboardPage() {
             borderRadius: '16px',
             padding: '16px',
             border: '1px solid rgba(255,255,255,0.2)',
+            overflow: 'hidden',
           }}>
-            <p style={{ fontSize: '13px', opacity: 0.85, marginBottom: '6px', fontWeight: 500 }}>💳 Total Kredit di Luar</p>
-            <p style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
-              {formatRupiah(totalPiutang)}
+            <p style={{ fontSize: '12px', opacity: 0.85, marginBottom: '6px', fontWeight: 500 }}>💳 Total Kredit di Luar</p>
+            <p style={{ fontSize: '11px', opacity: 0.75, fontWeight: 600, marginBottom: '2px' }}>Rp</p>
+            <p style={{
+              fontSize: 'clamp(16px, 4vw, 26px)',
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              lineHeight: 1.1,
+              wordBreak: 'break-all',
+              overflowWrap: 'break-word',
+            }}>
+              {new Intl.NumberFormat('id-ID').format(totalPiutang)}
             </p>
           </div>
           <div style={{
@@ -125,10 +134,19 @@ export default function DashboardPage() {
             borderRadius: '16px',
             padding: '16px',
             border: '1px solid rgba(255,255,255,0.2)',
+            overflow: 'hidden',
           }}>
-            <p style={{ fontSize: '13px', opacity: 0.85, marginBottom: '6px', fontWeight: 500 }}>💵 Masuk Hari Ini</p>
-            <p style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
-              {uangMasukHariIni > 0 ? formatRupiah(uangMasukHariIni) : 'Rp 0'}
+            <p style={{ fontSize: '12px', opacity: 0.85, marginBottom: '6px', fontWeight: 500 }}>💵 Masuk Hari Ini</p>
+            <p style={{ fontSize: '11px', opacity: 0.75, fontWeight: 600, marginBottom: '2px' }}>Rp</p>
+            <p style={{
+              fontSize: 'clamp(16px, 4vw, 26px)',
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              lineHeight: 1.1,
+              wordBreak: 'break-all',
+              overflowWrap: 'break-word',
+            }}>
+              {new Intl.NumberFormat('id-ID').format(uangMasukHariIni)}
             </p>
           </div>
         </div>

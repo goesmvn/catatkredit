@@ -37,8 +37,12 @@ function BonBaruForm() {
   const [saved, setSaved] = useState(false)
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false)
   const [newCustomerForm, setNewCustomerForm] = useState({ nama: '', alamat: '', no_hp: '', ciri_ciri: '' })
+  const [isSaving, setIsSaving] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null)
 
   const selectedCustomer = dbCustomers.find(c => c.id === selectedCustomerId)
+  const editingCartItem = cart.find(c => c.id === editingCartItemId)
   const filteredCustomers = dbCustomers.filter(c =>
     c.nama.toLowerCase().includes(search.toLowerCase()) && c.id !== selectedCustomerId
   )
@@ -48,10 +52,7 @@ function BonBaruForm() {
     setCart(prev => {
       const existing = prev.find(p => p.id === item.id)
       if (existing) {
-        return prev.map(p => p.id === item.id
-          ? { ...p, qty: p.qty + 1, subtotal: (p.qty + 1) * p.harga_satuan }
-          : p
-        )
+        return prev; // Jangan tambah qty otomatis, biarkan user isi di popup
       } else {
         return [...prev, {
           id: item.id,
@@ -64,6 +65,7 @@ function BonBaruForm() {
     })
     setItemSearch('')
     setShowItemSuggestions(false)
+    setEditingCartItemId(item.id) // Buka popup otomatis
   }
 
   const handleAddNewItem = async (name: string) => {
@@ -118,7 +120,7 @@ function BonBaruForm() {
   const removeItem = (id: string) => setCart(prev => prev.filter(item => item.id !== id))
   const grandTotal = cart.reduce((sum, item) => sum + item.subtotal, 0)
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!selectedCustomerId) { alert('Pilih pelanggan terlebih dahulu!'); return }
     if (cart.length === 0) { alert('Keranjang belanja kosong!'); return }
     if (grandTotal === 0) { alert('Total kredit tidak boleh 0!'); return }
@@ -126,12 +128,12 @@ function BonBaruForm() {
       alert('Pelanggan ini di-BLACKLIST! Tidak bisa membuat kredit baru.')
       return
     }
+    setShowConfirmModal(true)
+  }
 
-    if (!window.confirm(`Simpan kredit sebesar ${formatRupiah(grandTotal)} untuk ${selectedCustomer.nama}?`)) {
-      return
-    }
-
+  const handleConfirmSave = async () => {
     setIsSaving(true)
+    setShowConfirmModal(false)
     try {
       const id = crypto.randomUUID()
       const res = await fetch('/api/transactions', {
@@ -166,24 +168,22 @@ function BonBaruForm() {
   }
 
   return (
-    <div style={{ paddingBottom: '100px' }}>
-      {/* HEADER */}
-      <div className="page-header" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="kasir-content-wrapper">
+      {/* HEADER KOMPAK */}
+      <div className="page-header" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{
-          display: 'inline-flex', alignItems: 'center', gap: '8px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: 'rgba(255,255,255,0.2)', color: 'white',
-          padding: '8px 16px', borderRadius: '50px',
+          width: '36px', height: '36px', borderRadius: '50%',
           border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer',
-          fontSize: '14px', fontWeight: 600, alignSelf: 'flex-start',
-          backdropFilter: 'blur(10px)',
         }}>
-          <span style={{ fontSize: '18px', lineHeight: 1 }}>←</span> Kembali
+          <span style={{ fontSize: '18px', lineHeight: 1 }}>←</span>
         </button>
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>📝</span> Kasir Kredit Baru
+          <h1 style={{ fontSize: '18px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>📝</span> Kasir Kredit
           </h1>
-          <p style={{ fontSize: '15px', opacity: 0.9 }}>Pencatatan otomatis dengan kalkulasi harga</p>
+          <p style={{ fontSize: '12px', opacity: 0.9, margin: 0 }}>Pencatatan kredit baru</p>
         </div>
       </div>
 
@@ -334,24 +334,30 @@ function BonBaruForm() {
                     <p style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-main)', paddingLeft: '8px' }}>{item.nama_barang}</p>
                     <button onClick={() => removeItem(item.id)} style={{ background: 'var(--danger-light)', borderRadius: '50%', width: 32, height: 32, border: 'none', color: 'var(--danger)', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '12px', alignItems: 'end' }}>
+                  <div 
+                    onClick={() => setEditingCartItemId(item.id)}
+                    style={{ 
+                      display: 'grid', gridTemplateColumns: '100px 1fr', gap: '12px', alignItems: 'end',
+                      background: 'var(--bg)', padding: '12px', borderRadius: '12px', cursor: 'pointer',
+                      border: '1px solid transparent', transition: 'border 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.border = '1px solid var(--primary-light)'}
+                    onMouseLeave={(e) => e.currentTarget.style.border = '1px solid transparent'}
+                  >
                     <div>
-                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-sub)', marginBottom: '6px', display: 'block' }}>Kuantitas</label>
-                      <input
-                        type="number" inputMode="numeric" className="form-input"
-                        style={{ padding: '10px', textAlign: 'center', fontSize: '16px', fontWeight: 700, background: 'var(--bg)', border: 'none' }}
-                        value={item.qty === 0 ? '' : item.qty}
-                        onChange={(e) => handleUpdateCart(item.id, 'qty', parseInt(e.target.value) || 0)}
-                      />
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-sub)', marginBottom: '4px', display: 'block' }}>Kuantitas</label>
+                      <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-main)' }}>
+                        {item.qty} <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-sub)' }}>x</span>
+                      </div>
                     </div>
                     <div>
-                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-sub)', marginBottom: '6px', display: 'block' }}>Harga Satuan (Rp)</label>
-                      <input
-                        type="text" inputMode="numeric" className="form-input"
-                        style={{ padding: '10px 14px', color: 'var(--primary)', fontWeight: 800, fontSize: '16px', background: 'var(--bg)', border: 'none' }}
-                        value={item.harga_satuan === 0 ? '' : new Intl.NumberFormat('id-ID').format(item.harga_satuan)}
-                        onChange={(e) => handleUpdateCart(item.id, 'harga_satuan', parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)}
-                      />
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-sub)', marginBottom: '4px', display: 'block' }}>Harga Satuan (Rp)</label>
+                      <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--primary)' }}>
+                        {formatRupiah(item.harga_satuan)}
+                      </div>
+                    </div>
+                    <div style={{ gridColumn: 'span 2', textAlign: 'center', fontSize: '11px', color: 'var(--primary)', fontWeight: 600, marginTop: '4px', opacity: 0.8 }}>
+                      ✎ Ketuk untuk ubah jumlah / harga
                     </div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed var(--border)' }}>
@@ -372,19 +378,11 @@ function BonBaruForm() {
       </div>
 
       {/* Floating Bottom Bar */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-        background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(12px)',
-        borderTop: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 -8px 24px rgba(0,0,0,0.06)'
-      }}>
-        <div style={{
-          maxWidth: '480px', margin: '0 auto',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 24px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))'
-        }}>
+      <div className="kasir-bottom-bar">
+        <div className="kasir-bottom-bar__inner">
           <div>
-            <p style={{ fontSize: '13px', color: 'var(--text-sub)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Tagihan</p>
-            <p style={{ fontSize: '24px', fontWeight: 900, color: 'var(--primary)', lineHeight: 1.1, marginTop: '2px' }}>
+            <p style={{ fontSize: '11px', color: 'var(--text-sub)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Tagihan</p>
+            <p style={{ fontSize: '20px', fontWeight: 900, color: 'var(--primary)', lineHeight: 1.1, marginTop: '2px' }}>
               {formatRupiah(grandTotal)}
             </p>
           </div>
@@ -393,15 +391,61 @@ function BonBaruForm() {
             className="btn btn-primary"
             disabled={isSaving || grandTotal === 0 || !selectedCustomerId}
             style={{
-              padding: '16px 32px', borderRadius: '100px', fontSize: '18px', fontWeight: 800,
-              boxShadow: '0 8px 20px rgba(27,108,168,0.35)',
+              padding: '10px 20px', borderRadius: '50px', fontSize: '15px', fontWeight: 700,
+              boxShadow: '0 4px 12px rgba(27,108,168,0.25)',
               opacity: (grandTotal > 0 && selectedCustomerId && !isSaving) ? 1 : 0.6,
-              cursor: isSaving ? 'not-allowed' : 'pointer'
+              cursor: isSaving ? 'not-allowed' : 'pointer',
+              height: 'auto', minHeight: '44px'
             }}>
             {isSaving ? 'Menyimpan...' : 'Simpan Kredit'}
           </button>
         </div>
       </div>
+
+      {/* MODAL EDIT ITEM KERANJANG */}
+      {editingCartItemId && editingCartItem && (
+        <div className="overlay" style={{ zIndex: 60 }}>
+          <div className="modal-sheet">
+            <div className="modal-handle" />
+            <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: 'var(--text-main)', textAlign: 'center' }}>
+              Atur {editingCartItem.nama_barang}
+            </h2>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gap: '16px', 
+              marginBottom: '24px' 
+            }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px', textAlign: 'center' }}>Kuantitas</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button onClick={() => handleUpdateCart(editingCartItem.id, 'qty', editingCartItem.qty - 1)} className="btn btn-outline" style={{ width: '44px', height: '44px', borderRadius: '50%', fontSize: '24px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>-</button>
+                  <input
+                    type="number" inputMode="numeric" className="form-input"
+                    style={{ flex: 1, padding: '12px', textAlign: 'center', fontSize: '20px', fontWeight: 800, background: 'var(--bg)', border: 'none', borderRadius: '12px' }}
+                    value={editingCartItem.qty === 0 ? '' : editingCartItem.qty}
+                    onChange={(e) => handleUpdateCart(editingCartItem.id, 'qty', parseInt(e.target.value) || 0)}
+                  />
+                  <button onClick={() => handleUpdateCart(editingCartItem.id, 'qty', editingCartItem.qty + 1)} className="btn btn-outline" style={{ width: '44px', height: '44px', borderRadius: '50%', fontSize: '24px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px', textAlign: 'center' }}>Harga Satuan (Rp)</label>
+                <input
+                  type="text" inputMode="numeric" className="form-input"
+                  style={{ width: '100%', padding: '12px', textAlign: 'center', color: 'var(--primary)', fontWeight: 800, fontSize: '20px', background: 'var(--bg)', border: 'none', borderRadius: '12px' }}
+                  value={editingCartItem.harga_satuan === 0 ? '' : new Intl.NumberFormat('id-ID').format(editingCartItem.harga_satuan)}
+                  onChange={(e) => handleUpdateCart(editingCartItem.id, 'harga_satuan', parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => { removeItem(editingCartItem.id); setEditingCartItemId(null); }} className="btn btn-ghost btn-lg" style={{ flex: 1, borderRadius: '100px', fontWeight: 700, color: 'var(--danger)', background: 'var(--danger-light)' }}>Hapus</button>
+              <button onClick={() => setEditingCartItemId(null)} className="btn btn-primary btn-lg" style={{ flex: 2, borderRadius: '100px', fontWeight: 800 }}>Simpan</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL TAMBAH PELANGGAN BARU */}
       {showNewCustomerModal && (
@@ -411,21 +455,27 @@ function BonBaruForm() {
             <h2 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '24px', color: 'var(--text-main)', textAlign: 'center' }}>
               👤 Pelanggan Baru
             </h2>
-            <div style={{ display: 'grid', gap: '20px', marginBottom: '32px' }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gap: '12px 16px', 
+              marginBottom: '24px' 
+            }}>
               {[
                 { label: 'Nama Lengkap *', key: 'nama', type: 'text', placeholder: 'Misal: Budi Santoso' },
                 { label: 'No. HP (Opsional)', key: 'no_hp', type: 'tel', placeholder: 'Misal: 08123456789' },
                 { label: 'Alamat (Opsional)', key: 'alamat', type: 'text', placeholder: 'Alamat lengkap...' },
+                { label: 'Ciri-ciri (Opsional)', key: 'ciri_ciri', type: 'text', placeholder: 'Misal: Sering pakai topi' },
               ].map(field => (
                 <div key={field.key}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>{field.label}</label>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>{field.label}</label>
                   <input
                     type={field.type}
                     value={(newCustomerForm as any)[field.key]}
                     onChange={e => setNewCustomerForm(prev => ({ ...prev, [field.key]: e.target.value }))}
                     className="form-input"
                     placeholder={field.placeholder}
-                    style={{ background: 'var(--bg)', border: 'none' }}
+                    style={{ background: 'var(--bg)', border: 'none', padding: '12px', borderRadius: '12px', fontSize: '14px' }}
                   />
                 </div>
               ))}
@@ -437,6 +487,43 @@ function BonBaruForm() {
           </div>
         </div>
       )}
+      {/* MODAL KONFIRMASI SIMPAN */}
+      {showConfirmModal && (
+        <div className="overlay" style={{ zIndex: 70 }}>
+          <div className="modal-sheet" style={{ paddingBottom: '32px' }}>
+            <div className="modal-handle" />
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
+              <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
+                Simpan Kredit Baru?
+              </h2>
+              <p style={{ fontSize: '15px', color: 'var(--text-sub)' }}>
+                Total tagihan: <strong style={{ color: 'var(--primary)' }}>{formatRupiah(grandTotal)}</strong>
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                onClick={() => setShowConfirmModal(false)} 
+                className="btn btn-ghost btn-lg" 
+                style={{ flex: 1, borderRadius: '100px', fontWeight: 700 }}
+                disabled={isSaving}
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleConfirmSave} 
+                className="btn btn-primary btn-lg" 
+                style={{ flex: 1, borderRadius: '100px', fontWeight: 800, opacity: isSaving ? 0.7 : 1 }}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Menyimpan...' : 'Ya, Simpan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

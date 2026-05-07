@@ -37,58 +37,85 @@ export default function LoginPage() {
     <div style={{
       minHeight: '100dvh',
       display: 'flex',
-      flexDirection: 'column',
-      background: 'var(--bg)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #f6f8fb 0%, #e5ebf4 100%)',
+      padding: '20px'
     }}>
       <div style={{
-        background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-        padding: '40px 20px',
-        color: 'white',
-        textAlign: 'center',
-        borderBottomLeftRadius: '24px',
-        borderBottomRightRadius: '24px',
+        width: '100%',
+        maxWidth: '420px',
+        background: 'var(--white)',
+        borderRadius: '32px',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.05)',
+        padding: '48px 32px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center'
       }}>
-        <div style={{ fontSize: '48px', marginBottom: '8px' }}>📝</div>
-        <h1 style={{ fontSize: '28px', fontWeight: 800 }}>CatatKredit</h1>
-        <p style={{ fontSize: '16px', opacity: 0.85, marginTop: '4px' }}>
-          Silakan masuk untuk melanjutkan
+        <div style={{
+          width: '80px', height: '80px',
+          background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
+          borderRadius: '24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '40px',
+          marginBottom: '24px',
+          boxShadow: '0 12px 24px rgba(0,0,0,0.1)'
+        }}>
+          📝
+        </div>
+        
+        <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px', letterSpacing: '-0.5px' }}>
+          CatatKredit
+        </h1>
+        <p style={{ fontSize: '15px', color: 'var(--text-sub)', textAlign: 'center', marginBottom: '40px' }}>
+          Masuk untuk mengelola catatan kredit & transaksi toko Anda.
         </p>
-      </div>
 
-      <div style={{ padding: '32px 20px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <form onSubmit={handleLogin} style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleLogin} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           {error && (
-            <div className="alert alert-danger" style={{ marginBottom: '10px' }}>
-              ⚠️ {error}
+            <div style={{ 
+              background: 'var(--danger-light)', color: 'var(--danger)', 
+              padding: '12px 16px', borderRadius: '12px', fontSize: '14px', 
+              fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px',
+              marginBottom: '8px'
+            }}>
+              <span>⚠️</span> {error}
             </div>
           )}
 
           <div className="form-group">
-            <label className="form-label">Username</label>
+            <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '14px' }}>Username</label>
             <input 
               type="text" 
               className="form-input" 
-              placeholder="Contoh: kasir1"
+              placeholder="Masukkan username..."
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={loading}
               autoCapitalize="none"
               autoComplete="username"
+              style={{ padding: '16px', fontSize: '16px', borderRadius: '16px', background: '#f8fafc', border: '1px solid transparent', transition: 'all 0.2s' }}
+              onFocus={(e) => { e.target.style.border = '1px solid var(--primary)'; e.target.style.background = 'var(--white)' }}
+              onBlur={(e) => { e.target.style.border = '1px solid transparent'; e.target.style.background = '#f8fafc' }}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">PIN</label>
+            <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '14px' }}>PIN Keamanan</label>
             <input 
               type="password" 
               inputMode="numeric"
               pattern="[0-9]*"
               className="form-input" 
-              placeholder="Masukkan PIN Anda"
+              placeholder="••••••"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               disabled={loading}
+              style={{ padding: '16px', fontSize: '20px', letterSpacing: '2px', borderRadius: '16px', background: '#f8fafc', border: '1px solid transparent', transition: 'all 0.2s' }}
+              onFocus={(e) => { e.target.style.border = '1px solid var(--primary)'; e.target.style.background = 'var(--white)' }}
+              onBlur={(e) => { e.target.style.border = '1px solid transparent'; e.target.style.background = '#f8fafc' }}
             />
           </div>
 
@@ -96,9 +123,16 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             className="btn btn-primary btn-xl btn-full"
-            style={{ marginTop: '16px' }}
+            style={{ 
+              marginTop: '16px', 
+              borderRadius: '16px', 
+              padding: '18px', 
+              fontSize: '16px', 
+              fontWeight: 800,
+              boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+            }}
           >
-            {loading ? 'Memproses...' : 'Masuk'}
+            {loading ? 'Memproses...' : 'Masuk ke Dasbor'}
           </button>
         </form>
       </div>

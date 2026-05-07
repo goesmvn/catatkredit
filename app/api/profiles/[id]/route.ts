@@ -4,7 +4,8 @@ import { db, initDB } from '@/lib/db/server/sqlite';
 
 initDB();
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
     const body = await request.json();
     const now = Date.now();
@@ -13,17 +14,18 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (fields.length === 0) return NextResponse.json({ error: 'No valid fields' }, { status: 400 });
     const setClause = fields.map(f => `${f} = ?`).join(', ');
     const values = fields.map(f => body[f]);
-    db.prepare(`UPDATE profiles SET ${setClause}, updated_at = ? WHERE id = ?`).run(...values, now, params.id);
-    const row = db.prepare('SELECT * FROM profiles WHERE id = ?').get(params.id);
+    db.prepare(`UPDATE profiles SET ${setClause}, updated_at = ? WHERE id = ?`).run(...values, now, id);
+    const row = db.prepare('SELECT * FROM profiles WHERE id = ?').get(id);
     return NextResponse.json(row);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
-    db.prepare('UPDATE profiles SET deleted_at = ? WHERE id = ?').run(Date.now(), params.id);
+    db.prepare('UPDATE profiles SET deleted_at = ? WHERE id = ?').run(Date.now(), id);
     return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

@@ -34,10 +34,13 @@ function PembayaranForm() {
     c.total_hutang > 0 && c.nama.toLowerCase().includes(search.toLowerCase())
   )
 
+  const isOverLimit = customer ? nominalNum > customer.total_hutang : false
+
   const handleSave = async () => {
     if (!selected) { alert('Pilih pelanggan!'); return }
     if (!nominal) { alert('Masukkan jumlah pembayaran!'); return }
     if (nominalNum <= 0) { alert('Jumlah harus lebih dari 0!'); return }
+    if (isOverLimit) { alert(`Jumlah bayar tidak boleh melebihi total hutang (${formatRupiah(customer!.total_hutang)})!`); return }
 
     try {
       const id = crypto.randomUUID()
@@ -196,8 +199,16 @@ function PembayaranForm() {
                     inputMode="numeric"
                     placeholder="0"
                     value={nominal ? new Intl.NumberFormat('id-ID').format(parseInt(nominal.replace(/\D/g, ''), 10) || 0) : ''}
-                    onChange={e => setNominal(e.target.value.replace(/\D/g, ''))}
-                    style={{ paddingLeft: '52px', fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', height: '72px' }}
+                    onChange={e => {
+                      const raw = parseInt(e.target.value.replace(/\D/g, ''), 10) || 0
+                      const maxVal = customer?.total_hutang || Infinity
+                      setNominal(String(Math.min(raw, maxVal)))
+                    }}
+                    style={{
+                      paddingLeft: '52px', fontSize: '28px', fontWeight: 800, letterSpacing: '-0.02em', height: '72px',
+                      borderColor: isOverLimit ? 'var(--danger)' : undefined,
+                      boxShadow: isOverLimit ? '0 0 0 3px rgba(239,68,68,0.15)' : undefined,
+                    }}
                     autoFocus
                   />
                 </div>
@@ -215,15 +226,34 @@ function PembayaranForm() {
                 </div>
 
                 {nominalNum > 0 && (
-                  <div style={{ marginTop: '16px', padding: '14px', background: isLunas ? 'var(--success-light)' : 'var(--warning-light)', borderRadius: 'var(--radius-md)' }}>
-                    <p style={{ fontSize: '14px', color: 'var(--text-sub)' }}>Sisa setelah bayar:</p>
-                    <p style={{ fontSize: '28px', fontWeight: 800, color: isLunas ? 'var(--success)' : 'var(--warning)' }}>
-                      {isLunas ? '🎉 LUNAS!' : formatRupiah(previewSisa)}
-                    </p>
+                  <div style={{
+                    marginTop: '16px', padding: '14px', borderRadius: 'var(--radius-md)',
+                    background: isOverLimit ? 'var(--danger-light)' : isLunas ? 'var(--success-light)' : 'var(--warning-light)'
+                  }}>
+                    {isOverLimit ? (
+                      <>
+                        <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--danger)' }}>⚠️ Melebihi total hutang!</p>
+                        <p style={{ fontSize: '15px', color: 'var(--danger)', marginTop: '4px' }}>
+                          Maksimal pembayaran: <strong>{formatRupiah(customer?.total_hutang || 0)}</strong>
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p style={{ fontSize: '14px', color: 'var(--text-sub)' }}>Sisa setelah bayar:</p>
+                        <p style={{ fontSize: '28px', fontWeight: 800, color: isLunas ? 'var(--success)' : 'var(--warning)' }}>
+                          {isLunas ? '🎉 LUNAS!' : formatRupiah(previewSisa)}
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
 
-                <button onClick={handleSave} className="btn btn-success btn-xl btn-full" style={{ marginTop: '16px' }}>
+                <button
+                  onClick={handleSave}
+                  className="btn btn-success btn-xl btn-full"
+                  disabled={isOverLimit || nominalNum <= 0}
+                  style={{ marginTop: '16px', opacity: (isOverLimit || nominalNum <= 0) ? 0.5 : 1, cursor: isOverLimit ? 'not-allowed' : 'pointer' }}
+                >
                   💾 Simpan Pembayaran
                 </button>
               </div>
