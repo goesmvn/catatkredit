@@ -158,7 +158,7 @@ function BonBaruForm() {
       })
       if (!res.ok) throw new Error('Gagal menyimpan')
       setSaved(true)
-      setTimeout(() => router.push('/'), 1800)
+      setTimeout(() => router.push(`/pelanggan/${selectedCustomerId}`), 1800)
     } catch (error) {
       console.error(error)
       alert('Terjadi kesalahan saat menyimpan kredit')

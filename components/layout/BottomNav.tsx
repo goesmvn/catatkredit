@@ -8,7 +8,8 @@ import { useEffect, useState } from 'react'
 const navItems = [
   { href: '/', label: 'Dashboard', icon: '🏠', roles: ['SUPERADMIN', 'ADMIN', 'KASIR'] },
   { href: '/pelanggan', label: 'Pelanggan', icon: '👥', roles: ['SUPERADMIN', 'ADMIN', 'KASIR'] },
-  { href: '/bon-baru', label: 'Kredit', icon: '📝', roles: ['SUPERADMIN', 'ADMIN', 'KASIR'] },
+  { href: '/bon-baru', label: 'Catat Kredit', icon: '📝', roles: ['SUPERADMIN', 'ADMIN', 'KASIR'] },
+  { href: '/pembayaran', label: 'Bayar Kredit', icon: '💰', roles: ['SUPERADMIN', 'ADMIN', 'KASIR'] },
   { href: '/barang', label: 'Barang', icon: '📦', roles: ['SUPERADMIN', 'ADMIN', 'KASIR'] },
   { href: '/laporan', label: 'Laporan', icon: '📊', roles: ['SUPERADMIN', 'ADMIN'] },
   { href: '/pengaturan', label: 'Setelan', icon: '⚙️', roles: ['SUPERADMIN', 'ADMIN'] },

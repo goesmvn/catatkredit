@@ -50,6 +50,10 @@ export default function DashboardPage() {
     return unpaidTxs.some((t: any) => (nowMs - t.tanggal) > batasMs)
   }).length
 
+  const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const blacklistCount = customers.filter((c: any) => c.status === 'BLACKLIST').length
+  const activeCustomers = customers.filter((c: any) => c.status !== 'BLACKLIST').length
+
   const getCustomerName = (id: string) => customers.find((c: any) => c.id === id)?.nama || 'Pelanggan'
 
   const allActivities = [
@@ -89,183 +93,271 @@ export default function DashboardPage() {
         padding: '24px 20px 32px',
         color: 'white',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
           <div>
-            <p style={{ fontSize: '14px', opacity: 0.8, marginBottom: '2px' }}>Selamat datang 👋</p>
-            <h1 style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.02em' }}>{settings.nama_toko}</h1>
-          </div>
-          <div style={{
-            background: 'rgba(255,255,255,0.15)',
-            borderRadius: '12px',
-            padding: '8px 14px',
-            fontSize: '13px',
-            fontWeight: 600,
-          }}>
-            {new Date().toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}
+            <p style={{ fontSize: '14px', opacity: 0.8, marginBottom: '4px' }}>Selamat datang 👋</p>
+            <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '4px' }}>{settings.nama_toko}</h1>
+            <p style={{ fontSize: '13px', opacity: 0.7 }}>{today}</p>
           </div>
         </div>
 
-        {/* Stat cards row */}
+        {/* Main Stat Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          {/* Total Piutang */}
           <div style={{
-            background: 'rgba(255,255,255,0.15)',
-            backdropFilter: 'blur(8px)',
+            background: 'rgba(255,255,255,0.12)',
+            backdropFilter: 'blur(10px)',
             borderRadius: '16px',
             padding: '16px',
-            border: '1px solid rgba(255,255,255,0.2)',
+            border: '1px solid rgba(255,255,255,0.18)',
             overflow: 'hidden',
           }}>
-            <p style={{ fontSize: '12px', opacity: 0.85, marginBottom: '6px', fontWeight: 500 }}>💳 Total Kredit di Luar</p>
-            <p style={{ fontSize: '11px', opacity: 0.75, fontWeight: 600, marginBottom: '2px' }}>Rp</p>
+            <p style={{ fontSize: '12px', opacity: 0.8, marginBottom: '8px', fontWeight: 500 }}>💳 Total Piutang</p>
             <p style={{
-              fontSize: 'clamp(16px, 4vw, 26px)',
+              fontSize: 'clamp(18px, 4.5vw, 28px)',
               fontWeight: 800,
-              letterSpacing: '-0.03em',
+              letterSpacing: '-0.02em',
               lineHeight: 1.1,
               wordBreak: 'break-all',
               overflowWrap: 'break-word',
             }}>
-              {new Intl.NumberFormat('id-ID').format(totalPiutang)}
+              {new Intl.NumberFormat('id-ID', { notation: 'compact', compactDisplay: 'short' }).format(totalPiutang)}
             </p>
           </div>
+          
+          {/* Masuk Hari Ini */}
           <div style={{
-            background: 'rgba(255,255,255,0.15)',
-            backdropFilter: 'blur(8px)',
+            background: 'rgba(34, 197, 94, 0.2)',
+            backdropFilter: 'blur(10px)',
             borderRadius: '16px',
             padding: '16px',
-            border: '1px solid rgba(255,255,255,0.2)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
             overflow: 'hidden',
           }}>
-            <p style={{ fontSize: '12px', opacity: 0.85, marginBottom: '6px', fontWeight: 500 }}>💵 Masuk Hari Ini</p>
-            <p style={{ fontSize: '11px', opacity: 0.75, fontWeight: 600, marginBottom: '2px' }}>Rp</p>
+            <p style={{ fontSize: '12px', opacity: 0.9, marginBottom: '8px', fontWeight: 500 }}>💵 Masuk Hari Ini</p>
             <p style={{
-              fontSize: 'clamp(16px, 4vw, 26px)',
+              fontSize: 'clamp(18px, 4.5vw, 28px)',
               fontWeight: 800,
-              letterSpacing: '-0.03em',
+              letterSpacing: '-0.02em',
               lineHeight: 1.1,
               wordBreak: 'break-all',
               overflowWrap: 'break-word',
+              color: '#22c55e'
             }}>
-              {new Intl.NumberFormat('id-ID').format(uangMasukHariIni)}
+              {new Intl.NumberFormat('id-ID', { notation: 'compact', compactDisplay: 'short' }).format(uangMasukHariIni)}
             </p>
           </div>
         </div>
       </div>
 
       <div className="page-body">
+        {/* Overview Stats Grid */}
+        <div>
+          <p className="section-label">📊 Overview</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+            {[
+              { 
+                label: 'Total Pelanggan', 
+                value: customers.length, 
+                icon: '👥',
+                color: '#3b82f6',
+                lightColor: 'rgba(59, 130, 246, 0.1)'
+              },
+              { 
+                label: 'Pelanggan Aktif', 
+                value: activeCustomers, 
+                icon: '✅',
+                color: '#10b981',
+                lightColor: 'rgba(16, 185, 129, 0.1)'
+              },
+              { 
+                label: 'Blacklist', 
+                value: blacklistCount, 
+                icon: '🚫',
+                color: '#ef4444',
+                lightColor: 'rgba(239, 68, 68, 0.1)'
+              },
+              { 
+                label: 'Menunggak', 
+                value: menunggakCount, 
+                icon: '⚠️',
+                color: '#f59e0b',
+                lightColor: 'rgba(245, 158, 11, 0.1)'
+              },
+            ].map(stat => (
+              <div key={stat.label} className="card" style={{
+                textAlign: 'center',
+                padding: '16px 12px',
+                background: stat.lightColor,
+                border: `1px solid ${stat.color}33`,
+              }}>
+                <p style={{ fontSize: '28px', marginBottom: '6px' }}>{stat.icon}</p>
+                <p style={{ fontSize: '20px', fontWeight: 800, color: stat.color, marginBottom: '4px' }}>{stat.value}</p>
+                <p style={{ fontSize: '12px', color: 'var(--text-sub)', fontWeight: 500 }}>{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div style={{ marginBottom: '24px' }}>
+          <p className="section-label">⚡ Aksi Cepat</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <Link href="/bon-baru" className="btn-cta btn-cta-blue" style={{
+              textDecoration: 'none', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              textAlign: 'center', 
+              padding: '18px 12px',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+              borderRadius: '12px',
+              border: 'none',
+              color: 'white',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+            }}>
+              <span style={{ fontSize: '32px', marginBottom: '8px', display: 'block' }}>📝</span>
+              <span style={{ fontSize: '15px', fontWeight: 700 }}>Catat Kredit</span>
+              <span style={{ fontSize: '11px', opacity: 0.85, marginTop: '4px', display: 'block' }}>Kredit baru</span>
+            </Link>
+            <Link href="/pembayaran" className="btn-cta btn-cta-green" style={{
+              textDecoration: 'none', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              textAlign: 'center', 
+              padding: '18px 12px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              borderRadius: '12px',
+              border: 'none',
+              color: 'white',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+            }}>
+              <span style={{ fontSize: '32px', marginBottom: '8px', display: 'block' }}>💰</span>
+              <span style={{ fontSize: '15px', fontWeight: 700 }}>Bayar Kredit</span>
+              <span style={{ fontSize: '11px', opacity: 0.85, marginTop: '4px', display: 'block' }}>Pembayaran</span>
+            </Link>
+          </div>
+        </div>
+
         {/* Smart Alert */}
         {menunggakCount > 0 && (
-          <div className="alert alert-warning animate-slideDown">
-            <span style={{ fontSize: '20px' }}>⚠️</span>
+          <div style={{
+            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            borderRadius: '12px',
+            padding: '14px 16px',
+            color: 'white',
+            marginBottom: '20px',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'flex-start',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+          }}>
+            <span style={{ fontSize: '24px', flexShrink: 0 }}>⚠️</span>
             <div>
-              <strong>Perhatian!</strong>
-              <br />Ada {menunggakCount} pelanggan belum bayar lebih dari {settings.batas_menunggak_hari} hari.{' '}
-              <Link href="/laporan" style={{ color: 'var(--warning)', textDecoration: 'underline', fontWeight: 700 }}>
-                Lihat laporan →
+              <p style={{ fontWeight: 700, marginBottom: '4px' }}>Perhatian!</p>
+              <p style={{ fontSize: '14px', lineHeight: 1.4, opacity: 0.95 }}>
+                Ada <strong>{menunggakCount} pelanggan</strong> belum bayar lebih dari {settings.batas_menunggak_hari} hari. 
+              </p>
+              <Link href="/laporan" style={{ 
+                color: 'white', 
+                textDecoration: 'underline', 
+                fontWeight: 700,
+                fontSize: '13px',
+                display: 'inline-block',
+                marginTop: '6px'
+              }}>
+                Lihat detail di Laporan →
               </Link>
             </div>
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div>
-          <p className="section-label">Aksi Cepat</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <Link href="/bon-baru" className="btn-cta btn-cta-blue" style={{
-              textDecoration: 'none', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '20px 12px'
-            }}>
-              <span className="btn-cta__icon" style={{ width: '56px', height: '56px', fontSize: '32px', marginBottom: '8px' }}>📝</span>
-              <span className="btn-cta__text" style={{ alignItems: 'center' }}>
-                <span className="btn-cta__label" style={{ fontSize: '16px' }}>Catat Kredit</span>
-                <span className="btn-cta__sublabel" style={{ textAlign: 'center', fontSize: '12px', marginTop: '4px' }}>Kredit baru</span>
-              </span>
-            </Link>
-            <Link href="/pembayaran" className="btn-cta btn-cta-green" style={{
-              textDecoration: 'none', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '20px 12px'
-            }}>
-              <span className="btn-cta__icon" style={{ width: '56px', height: '56px', fontSize: '32px', marginBottom: '8px' }}>💰</span>
-              <span className="btn-cta__text" style={{ alignItems: 'center' }}>
-                <span className="btn-cta__label" style={{ fontSize: '16px' }}>Bayar Kredit</span>
-                <span className="btn-cta__sublabel" style={{ textAlign: 'center', fontSize: '12px', marginTop: '4px' }}>Pembayaran</span>
-              </span>
-            </Link>
-          </div>
-        </div>
-
-        {/* Summary row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-          {[
-            { label: 'Total Pelanggan', value: customers.length, color: 'var(--primary)' },
-            { label: 'Blacklist', value: customers.filter((c: any) => c.status === 'BLACKLIST').length, color: 'var(--danger)' },
-            { label: 'Menunggak', value: menunggakCount, color: 'var(--warning)' },
-          ].map(stat => (
-            <div key={stat.label} className="card" style={{ textAlign: 'center', padding: '14px 8px' }}>
-              <p style={{ fontSize: '28px', fontWeight: 800, color: stat.color }}>{stat.value}</p>
-              <p style={{ fontSize: '12px', color: 'var(--text-sub)', marginTop: '4px', fontWeight: 500 }}>{stat.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Recent Activity */}
-        <div>
-          <p className="section-label">Aktivitas Terakhir</p>
-          {allActivities.length === 0 ? (
-            <div className="empty-state" style={{ padding: '24px 16px' }}>
-              <p style={{ color: 'var(--text-muted)' }}>Belum ada aktivitas.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {allActivities.map((act) => (
-                <div key={act.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px' }}>
-                  <div style={{
-                    width: '40px', height: '40px', borderRadius: '10px',
-                    background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '18px', flexShrink: 0,
+        {/* Two Column Layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+          {/* Recent Activity */}
+          <div>
+            <p className="section-label">🕐 Aktivitas Terakhir</p>
+            {allActivities.length === 0 ? (
+              <div className="empty-state" style={{ padding: '16px 12px', textAlign: 'center', borderRadius: '12px', background: 'var(--bg)' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Belum ada aktivitas.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {allActivities.map((act) => (
+                  <div key={act.id} className="card" style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '10px', 
+                    padding: '12px',
+                    fontSize: '13px'
                   }}>
-                    {act.icon}
+                    <div style={{
+                      width: '36px', 
+                      height: '36px', 
+                      borderRadius: '8px',
+                      background: 'var(--bg)', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      fontSize: '16px', 
+                      flexShrink: 0,
+                    }}>
+                      {act.icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {act.text}
+                      </p>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formatActivityTime(act.timestamp)}</p>
+                    </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>{act.text}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>{formatActivityTime(act.timestamp)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Pelanggan Snapshot */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <p className="section-label" style={{ margin: 0 }}>Pelanggan dengan Hutang</p>
-            <Link href="/pelanggan" style={{ fontSize: '15px', color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}>
-              Lihat Semua →
-            </Link>
+                ))}
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {customers.filter((c: any) => c.total_hutang > 0).slice(0, 3).map((customer: any) => (
-              <Link key={customer.id} href={`/pelanggan/${customer.id}`} className="list-item" style={{ textDecoration: 'none' }}>
-                <div className="list-item__avatar">
-                  {customer.nama.charAt(0)}
-                </div>
-                <div className="list-item__info">
-                  <p className="list-item__name">{customer.nama}</p>
-                  <p className="list-item__sub">Ada tunggakan</p>
-                </div>
-                <div className="list-item__right">
-                  <p style={{ fontSize: '16px', fontWeight: 700, color: customer.status === 'BLACKLIST' ? 'var(--danger)' : customer.total_hutang > 500000 ? 'var(--warning)' : 'var(--text-main)' }}>
-                    {formatRupiah(customer.total_hutang)}
-                  </p>
-                  <span className={`status-badge ${customer.status === 'BLACKLIST' ? 'status-blacklist' : customer.status === 'MENUNGGAK' ? 'status-menunggak' : 'status-lancar'}`}
-                    style={{ fontSize: '12px', padding: '2px 8px', marginTop: '4px' }}>
-                    {customer.status === 'BLACKLIST' ? '🚫 Blacklist' : customer.status === 'MENUNGGAK' ? '⚠️ Nunggak' : '✅ Lancar'}
-                  </span>
-                </div>
+
+          {/* Top Customers with Debt */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <p className="section-label" style={{ margin: 0 }}>👤 Pelanggan Hutang Besar</p>
+              <Link href="/pelanggan" style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}>
+                Semua →
               </Link>
-            ))}
-            {customers.filter((c: any) => c.total_hutang > 0).length === 0 && (
-              <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
-                Tidak ada pelanggan yang mempunyai hutang aktif.
+            </div>
+            {customers.filter((c: any) => c.total_hutang > 0).length === 0 ? (
+              <div className="empty-state" style={{ padding: '16px 12px', textAlign: 'center', borderRadius: '12px', background: 'var(--bg)' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Tidak ada hutang aktif.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {customers.filter((c: any) => c.total_hutang > 0).sort((a: any, b: any) => b.total_hutang - a.total_hutang).slice(0, 3).map((customer: any) => (
+                  <Link key={customer.id} href={`/pelanggan/${customer.id}`} className="list-item" style={{ 
+                    textDecoration: 'none',
+                    padding: '12px',
+                  }}>
+                    <div className="list-item__avatar" style={{ width: '36px', height: '36px', fontSize: '14px' }}>
+                      {customer.nama.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="list-item__info">
+                      <p className="list-item__name" style={{ fontSize: '13px', fontWeight: 600 }}>{customer.nama}</p>
+                      <p className="list-item__sub" style={{ fontSize: '11px' }}>
+                        {customer.status === 'BLACKLIST' ? '🚫 Blacklist' : customer.status === 'MENUNGGAK' ? '⚠️ Menunggak' : '✅ Lancar'}
+                      </p>
+                    </div>
+                    <div className="list-item__right" style={{ textAlign: 'right' }}>
+                      <p style={{ 
+                        fontSize: '14px', 
+                        fontWeight: 700, 
+                        color: customer.status === 'BLACKLIST' ? 'var(--danger)' : customer.total_hutang > 500000 ? 'var(--warning)' : 'var(--text-main)' 
+                      }}>
+                        {new Intl.NumberFormat('id-ID', { notation: 'compact', compactDisplay: 'short' }).format(customer.total_hutang)}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </div>

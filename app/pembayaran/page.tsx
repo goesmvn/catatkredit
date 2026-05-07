@@ -22,6 +22,7 @@ function PembayaranForm() {
   const [nominal, setNominal] = useState('')
   const [saved, setSaved] = useState(false)
   const [showReceipt, setShowReceipt] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [sisaHutang, setSisaHutang] = useState(0)
 
   const settings = getSettings()
@@ -58,6 +59,7 @@ function PembayaranForm() {
       if (!res.ok) throw new Error('Gagal menyimpan')
       setSisaHutang(previewSisa)
       setSaved(true)
+      // langsung tampilkan struk dan tawarkan opsi cetak
       setShowReceipt(true)
       // Refresh customer data
       const updatedList = await fetch('/api/customers').then(r => r.json())
@@ -259,6 +261,49 @@ function PembayaranForm() {
               </div>
             )}
 
+            {/* MODAL SUKSES PEMBAYARAN */}
+            {showSuccessModal && (
+              <div className="overlay" style={{ zIndex: 70 }}>
+                <div className="modal-sheet" style={{ paddingBottom: '32px' }}>
+                  <div className="modal-handle" />
+                  <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>
+                      {sisaHutang <= 0 ? '🎉' : '✅'}
+                    </div>
+                    <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
+                      {sisaHutang <= 0 ? 'Hutang Sudah Lunas!' : 'Pembayaran Berhasil!'}
+                    </h2>
+                    <p style={{ fontSize: '15px', color: 'var(--text-sub)' }}>
+                      {customer?.nama} telah membayar {formatRupiah(nominalNum)}
+                    </p>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button 
+                      onClick={() => {
+                        setShowSuccessModal(false);
+                        setShowReceipt(true);
+                      }} 
+                      className="btn btn-primary btn-lg" 
+                      style={{ flex: 1, borderRadius: '100px', fontWeight: 800 }}
+                    >
+                      Lihat Struk
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setShowSuccessModal(false);
+                        router.push(`/pelanggan/${selected}`);
+                      }} 
+                      className="btn btn-ghost btn-lg" 
+                      style={{ flex: 1, borderRadius: '100px', fontWeight: 700 }}
+                    >
+                      Detail Pelanggan
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Struk */}
             {showReceipt && (
               <div>
@@ -294,8 +339,30 @@ function PembayaranForm() {
                   <hr style={{ margin: '12px 0' }} />
                   <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
                 </div>
-                <button className="btn btn-primary btn-xl btn-full" style={{ marginTop: '12px' }}>🖨️ Cetak Struk (Bluetooth)</button>
-                <button onClick={() => router.push('/')} className="btn btn-ghost btn-lg btn-full" style={{ marginTop: '8px' }}>Kembali ke Beranda</button>
+                <button
+                  onClick={() => {
+                    try {
+                      // buka dialog cetak browser (atau handler cetak Bluetooth jika ada)
+                      window.print?.()
+                    } catch (e) {
+                      console.error('Print failed', e)
+                    } finally {
+                      // setelah memicu cetak, kembali ke detail pelanggan yang membayar
+                      setTimeout(() => router.push(`/pelanggan/${selected}`), 600)
+                    }
+                  }}
+                  className="btn btn-primary btn-xl btn-full"
+                  style={{ marginTop: '12px' }}
+                >
+                  🖨️ Cetak Struk
+                </button>
+                <button
+                  onClick={() => router.push(`/pelanggan/${selected}`)}
+                  className="btn btn-ghost btn-lg btn-full"
+                  style={{ marginTop: '8px' }}
+                >
+                  Tidak, Kembali ke Detail Pelanggan
+                </button>
               </div>
             )}
           </>
