@@ -36,13 +36,25 @@ function PembayaranForm() {
   )
 
   const isOverLimit = customer ? nominalNum > customer.total_hutang : false
+  const quickAmounts = [50000, 100000, 200000, 250000, 500000]
+  const paymentOptions = customer ? Array.from(new Set([...quickAmounts, customer.total_hutang]))
+    .filter(a => a > 0)
+    .sort((a, b) => {
+      if (a === customer.total_hutang) return 1
+      if (b === customer.total_hutang) return -1
+      return a - b
+    }) : []
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!selected) { alert('Pilih pelanggan!'); return }
     if (!nominal) { alert('Masukkan jumlah pembayaran!'); return }
     if (nominalNum <= 0) { alert('Jumlah harus lebih dari 0!'); return }
     if (isOverLimit) { alert(`Jumlah bayar tidak boleh melebihi total hutang (${formatRupiah(customer!.total_hutang)})!`); return }
+    
+    setShowSuccessModal(true)
+  }
 
+  const handleConfirmSave = async () => {
     try {
       const id = crypto.randomUUID()
       const res = await fetch('/api/payments', {
@@ -59,14 +71,15 @@ function PembayaranForm() {
       if (!res.ok) throw new Error('Gagal menyimpan')
       setSisaHutang(previewSisa)
       setSaved(true)
-      // langsung tampilkan struk dan tawarkan opsi cetak
       setShowReceipt(true)
+      setShowSuccessModal(false)
       // Refresh customer data
       const updatedList = await fetch('/api/customers').then(r => r.json())
       setDbCustomers(updatedList)
     } catch (err) {
       console.error(err)
       alert('Gagal menyimpan pembayaran')
+      setShowSuccessModal(false)
     }
   }
 
@@ -216,13 +229,13 @@ function PembayaranForm() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '12px' }}>
-                  {[50000, 100000, 200000, 250000, 500000, customer?.total_hutang || 0].map(amt => (
+                  {paymentOptions.map(amt => (
                     <button key={amt} onClick={() => setNominal(String(amt))} style={{
                       padding: '10px 8px', background: 'var(--primary-light)', border: '1.5px solid var(--primary)',
                       borderRadius: 'var(--radius-md)', color: 'var(--primary)', fontWeight: 700,
                       fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit',
                     }}>
-                      {amt === customer?.total_hutang ? '🏁 Lunas' : formatRupiah(amt)}
+                      {amt === customer?.total_hutang ? '🏁 Bayar penuh' : formatRupiah(amt)}
                     </button>
                   ))}
                 </div>
@@ -261,43 +274,35 @@ function PembayaranForm() {
               </div>
             )}
 
-            {/* MODAL SUKSES PEMBAYARAN */}
+            {/* MODAL KONFIRMASI PEMBAYARAN */}
             {showSuccessModal && (
               <div className="overlay" style={{ zIndex: 70 }}>
                 <div className="modal-sheet" style={{ paddingBottom: '32px' }}>
                   <div className="modal-handle" />
                   <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-                      {sisaHutang <= 0 ? '🎉' : '✅'}
-                    </div>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>💰</div>
                     <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
-                      {sisaHutang <= 0 ? 'Hutang Sudah Lunas!' : 'Pembayaran Berhasil!'}
+                      Konfirmasi Pembayaran
                     </h2>
                     <p style={{ fontSize: '15px', color: 'var(--text-sub)' }}>
-                      {customer?.nama} telah membayar {formatRupiah(nominalNum)}
+                      Apakah nominal pembayaran <strong style={{ color: 'var(--primary)' }}>{formatRupiah(nominalNum)}</strong> untuk <strong>{customer?.nama}</strong> sudah benar?
                     </p>
                   </div>
                   
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <button 
-                      onClick={() => {
-                        setShowSuccessModal(false);
-                        setShowReceipt(true);
-                      }} 
-                      className="btn btn-primary btn-lg" 
-                      style={{ flex: 1, borderRadius: '100px', fontWeight: 800 }}
-                    >
-                      Lihat Struk
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setShowSuccessModal(false);
-                        router.push(`/pelanggan/${selected}`);
-                      }} 
+                      onClick={() => setShowSuccessModal(false)} 
                       className="btn btn-ghost btn-lg" 
                       style={{ flex: 1, borderRadius: '100px', fontWeight: 700 }}
                     >
-                      Detail Pelanggan
+                      Batal
+                    </button>
+                    <button 
+                      onClick={handleConfirmSave} 
+                      className="btn btn-primary btn-lg" 
+                      style={{ flex: 1, borderRadius: '100px', fontWeight: 800 }}
+                    >
+                      Ya, Simpan
                     </button>
                   </div>
                 </div>

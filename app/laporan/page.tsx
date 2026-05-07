@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatRupiah, formatDate, daysSince, getSettings } from '@/lib/mockData'
+import { formatRupiah, formatDate, formatDateTime, daysSince, getSettings } from '@/lib/mockData'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 
-type Tab = 'dashboard' | 'tunggakan' | 'blacklist' | 'riwayat' | 'barang'
+type Tab = 'dashboard' | 'tunggakan' | 'blacklist' | 'riwayat' | 'barang' | 'pelanggan'
 
 export default function LaporanPage() {
   const { user } = useAuth()
@@ -88,6 +88,36 @@ export default function LaporanPage() {
     return late >= batasMacet
   })
 
+  // Customer Recapitulation Metrics
+  const customerMetrics = customers.map(c => {
+    const custTxs = transactions.filter(t => t.customer_id === c.id)
+    const custPayments = payments.filter(p => p.customer_id === c.id)
+    const totalBeli = custTxs.reduce((s, t) => s + t.total_harga, 0)
+    const totalBayar = custPayments.reduce((s, p) => s + p.nominal_bayar, 0)
+    
+    return {
+      ...c,
+      totalBeli,
+      totalBayar,
+      txCount: custTxs.length,
+      paymentCount: custPayments.length,
+      avgTransaksi: custTxs.length > 0 ? totalBeli / custTxs.length : 0,
+      loyaltyScore: custTxs.length > 0 ? custTxs.length + (custPayments.length * 0.5) : 0
+    }
+  })
+
+  // Top buyers by total amount
+  const topBuyers = customerMetrics
+    .filter(c => c.totalBeli > 0)
+    .sort((a, b) => b.totalBeli - a.totalBeli)
+    .slice(0, 10)
+
+  // Most loyal (by transaction frequency)
+  const mostLoyal = customerMetrics
+    .filter(c => c.txCount > 0)
+    .sort((a, b) => b.loyaltyScore - a.loyaltyScore)
+    .slice(0, 10)
+
   const chartData = (() => {
     if (filteredPayments.length === 0) return { data: [], max: 0 }
     const grouped = new Map<string, number>()
@@ -121,6 +151,7 @@ export default function LaporanPage() {
           ['dashboard', '📈 Dashboard'],
           ['riwayat', '📋 Riwayat'],
           ['barang', '📦 Penjualan'],
+          ['pelanggan', '👥 Pelanggan'],
           ['tunggakan', '⏳ Tunggakan'],
           ['blacklist', '🚫 Blacklist'],
         ] as [Tab, string][]).map(([tab, label]) => (
@@ -252,7 +283,7 @@ export default function LaporanPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <p style={{ fontSize: '17px', fontWeight: 700 }}>{customerInfo?.nama || 'Pelanggan Tidak Diketahui'}</p>
-                          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>{formatDate(new Date(p.tanggal_bayar).toISOString())}</p>
+                          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>{formatDateTime(p.tanggal_bayar)}</p>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <p style={{ fontSize: '20px', fontWeight: 800, color: 'var(--success)' }}>+{formatRupiah(p.nominal_bayar)}</p>
@@ -385,6 +416,98 @@ export default function LaporanPage() {
                 </div>
               ))
             )}
+          </>
+        )}
+
+        {/* PELANGGAN RECAPITULATION TAB */}
+        {activeTab === 'pelanggan' && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+              <div className="card" style={{ padding: '16px', background: 'var(--primary-light)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <p style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 700 }}>👥 Total Pelanggan</p>
+                <p style={{ fontSize: '28px', fontWeight: 800, color: 'var(--primary)', marginTop: '4px' }}>{customers.length}</p>
+              </div>
+              <div className="card" style={{ padding: '16px', background: 'var(--success-light)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                <p style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 700 }}>🛒 Total Penjualan</p>
+                <p style={{ fontSize: '28px', fontWeight: 800, color: 'var(--success)', marginTop: '4px' }}>{formatRupiah(customerMetrics.reduce((s, c) => s + c.totalBeli, 0))}</p>
+              </div>
+              <div className="card" style={{ padding: '16px', background: 'var(--warning-light)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                <p style={{ fontSize: '12px', color: 'var(--warning)', fontWeight: 700 }}>📊 Rata-Rata per Pelanggan</p>
+                <p style={{ fontSize: '28px', fontWeight: 800, color: 'var(--warning)', marginTop: '4px' }}>{formatRupiah(customerMetrics.length > 0 ? customerMetrics.reduce((s, c) => s + c.totalBeli, 0) / customerMetrics.length : 0)}</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+              <div>
+                <p className="section-label" style={{ marginBottom: '12px' }}>🏆 Top 5 Pembeli Terbanyak</p>
+                {topBuyers.slice(0, 5).map((c, idx) => (
+                  <Link key={c.id} href={`/pelanggan/${c.id}`} className="card" style={{ 
+                    display: 'flex', alignItems: 'center', gap: '12px', 
+                    padding: '14px', textDecoration: 'none', marginBottom: '8px', 
+                    background: 'var(--white)', borderLeft: `4px solid ${idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? '#cd7f32' : 'var(--primary)'}`
+                  }}>
+                    <div style={{ fontSize: '24px', fontWeight: 800, minWidth: '28px', textAlign: 'center' }}>{idx + 1}</div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-main)' }}>{c.nama}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-sub)', marginTop: '2px' }}>{c.txCount}x transaksi • {formatRupiah(c.totalBeli)}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              <div>
+                <p className="section-label" style={{ marginBottom: '12px' }}>⭐ Pelanggan Paling Loyal</p>
+                {mostLoyal.slice(0, 5).map((c, idx) => (
+                  <Link key={c.id} href={`/pelanggan/${c.id}`} className="card" style={{ 
+                    display: 'flex', alignItems: 'center', gap: '12px', 
+                    padding: '14px', textDecoration: 'none', marginBottom: '8px', 
+                    background: 'var(--white)', borderLeft: `4px solid ${idx === 0 ? '#fbbf24' : idx === 1 ? '#e5e7eb' : idx === 2 ? '#f97316' : 'var(--success)'}`
+                  }}>
+                    <div style={{ fontSize: '24px', fontWeight: 800, minWidth: '28px', textAlign: 'center' }}>{idx + 1}</div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-main)' }}>{c.nama}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-sub)', marginTop: '2px' }}>{c.txCount}x belanja • {c.paymentCount}x bayar</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="section-label">📋 Rekapitulasi Semua Pelanggan</p>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
+                      <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 700 }}>Nama</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 700 }}>Transaksi</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 700 }}>Bayar</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700 }}>Total Belanja</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700 }}>Total Bayar</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700 }}>Sisa Hutang</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customerMetrics.map(c => (
+                      <tr key={c.id} style={{ borderBottom: '1px solid var(--border)', '&:hover': { background: 'var(--bg)' } }}>
+                        <td style={{ padding: '12px 8px' }}>
+                          <Link href={`/pelanggan/${c.id}`} style={{ textDecoration: 'none', color: 'var(--primary)', fontWeight: 600 }}>
+                            {c.nama}
+                          </Link>
+                        </td>
+                        <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 700 }}>{c.txCount}</td>
+                        <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 700 }}>{c.paymentCount}</td>
+                        <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 600, color: 'var(--primary)' }}>{formatRupiah(c.totalBeli)}</td>
+                        <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 600, color: 'var(--success)' }}>{formatRupiah(c.totalBayar)}</td>
+                        <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700, color: c.total_hutang > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                          {formatRupiah(c.total_hutang)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </>
         )}
       </div>

@@ -230,6 +230,13 @@ export const formatDate = (d: string | number | Date): string => {
   })
 }
 
+export const formatDateTime = (d: string | number | Date): string => {
+  return new Date(d).toLocaleString('id-ID', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  })
+}
+
 export const daysSince = (d: string | number | Date): number => {
   const diff = Date.now() - new Date(d).getTime()
   return Math.floor(diff / (1000 * 60 * 60 * 24))

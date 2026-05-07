@@ -19,7 +19,9 @@ export default function PengaturanPage() {
     const { name, value } = e.target
     setSettings(prev => ({
       ...prev,
-      [name]: name === 'batas_menunggak_hari' ? parseInt(value) || 0 : value
+      [name]: name === 'batas_menunggak_hari'
+        ? value === '' ? 0 : parseInt(value, 10)
+        : value
     }))
   }
 
@@ -228,7 +230,7 @@ export default function PengaturanPage() {
               name="batas_menunggak_hari"
               className="form-input" 
               style={{ width: '100px' }}
-              value={settings.batas_menunggak_hari}
+              value={settings.batas_menunggak_hari === 0 ? '' : settings.batas_menunggak_hari}
               onChange={handleChange}
             />
             <span style={{ fontWeight: 600 }}>Hari</span>

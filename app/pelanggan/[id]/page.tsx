@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { formatRupiah, formatDate, getSettings } from '@/lib/mockData'
+import { formatRupiah, formatDate, formatDateTime, getSettings } from '@/lib/mockData'
 import { notFound } from 'next/navigation'
 
 const daysSince = (d: number): number => Math.floor((Date.now() - d) / 86400000)
@@ -331,7 +331,7 @@ export default function PelangganDetailPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     <div>
                       <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                        📅 {formatDate(new Date(tx.tanggal).toISOString())}
+                        📅 {formatDateTime(tx.tanggal)}
                       </p>
                       <p style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>
                         {formatRupiah(tx.total_harga)}
@@ -416,7 +416,7 @@ export default function PelangganDetailPage() {
                     }}>💵</div>
                     <div>
                       <p style={{ fontSize: '14px', color: 'var(--success)', fontWeight: 700, marginBottom: '2px' }}>Pembayaran Masuk</p>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{formatDate(new Date(p.tanggal_bayar).toISOString())}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{formatDateTime(p.tanggal_bayar)}</p>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
