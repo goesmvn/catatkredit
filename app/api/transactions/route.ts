@@ -33,9 +33,12 @@ export async function POST(request: Request) {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).run(item.id, id, item.item_tag_name || item.nama_barang, item.nama_barang, item.qty, item.harga_satuan, item.subtotal, now, now);
 
-        // 2. Automatis tambah ke Master Barang (item_tags) jika belum ada
+        // 2. Simpan atau perbarui harga ke Master Barang (item_tags)
         const existingItem = db.prepare('SELECT id FROM item_tags WHERE nama_barang = ?').get(item.nama_barang);
-        if (!existingItem) {
+        if (existingItem) {
+          db.prepare('UPDATE item_tags SET harga_default = ?, updated_at = ? WHERE id = ?')
+            .run(item.harga_satuan, now, existingItem.id);
+        } else {
           db.prepare(
             `INSERT INTO item_tags (id, nama_barang, harga_default, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
           ).run(crypto.randomUUID(), item.nama_barang, item.harga_satuan, now, now);

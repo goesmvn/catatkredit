@@ -121,7 +121,7 @@ export default function DashboardPage() {
               wordBreak: 'break-all',
               overflowWrap: 'break-word',
             }}>
-              {new Intl.NumberFormat('id-ID', { notation: 'compact', compactDisplay: 'short' }).format(totalPiutang)}
+              {formatRupiah(totalPiutang)}
             </p>
           </div>
           
@@ -144,7 +144,7 @@ export default function DashboardPage() {
               overflowWrap: 'break-word',
               color: '#22c55e'
             }}>
-              {new Intl.NumberFormat('id-ID', { notation: 'compact', compactDisplay: 'short' }).format(uangMasukHariIni)}
+              {formatRupiah(uangMasukHariIni)}
             </p>
           </div>
         </div>

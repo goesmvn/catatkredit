@@ -27,6 +27,8 @@ export default function PelangganDetailPage() {
   
   const [showEditTxModal, setShowEditTxModal] = useState(false)
   const [editTxForm, setEditTxForm] = useState({ id: '', total_harga: 0, status: '' })
+  const [showAllTransactions, setShowAllTransactions] = useState(false)
+  const [showAllPayments, setShowAllPayments] = useState(false)
 
   const fetchData = useCallback(async () => {
     if (!id) return
@@ -316,14 +318,51 @@ export default function PelangganDetailPage() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <p className="section-label" style={{ marginBottom: 0 }}>🛍️ Riwayat Belanja ({txs.length})</p>
+            {txs.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setShowAllTransactions(prev => !prev)}
+                className="btn btn-outline btn-sm"
+                style={{ whiteSpace: 'nowrap', minWidth: '180px' }}
+              >
+                {showAllTransactions ? 'Tutup riwayat data' : 'Lihat semua riwayat data'}
+              </button>
+            )}
           </div>
           {txs.length === 0 ? (
             <div className="empty-state" style={{ padding: '24px 16px', background: 'var(--bg)', borderRadius: '16px' }}>
               <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>Belum ada transaksi belanja</p>
             </div>
-          ) : (
+          ) : showAllTransactions ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
+                  <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700 }}>Tanggal</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>Total</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700 }}>Status</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700 }}>Barang</th>
+                </tr>
+              </thead>
+              <tbody>
+                {txs.map((tx: any) => (
+                  <tr key={tx.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '12px 10px' }}>{formatDateTime(tx.tanggal)}</td>
+                    <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>{formatRupiah(tx.total_harga)}</td>
+                    <td style={{ padding: '12px 10px', textAlign: 'center' }}>
+                      <span className={`status-badge ${tx.status === 'LUNAS' ? 'status-lunas' : 'status-belum-lunas'}`} style={{ padding: '4px 10px', fontSize: '12px' }}>
+                        {tx.status === 'LUNAS' ? 'LUNAS' : 'BELUM LUNAS'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 10px' }}>{getTxItems(tx.id).map((item: any) => item.nama_barang).join(', ') || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {txs.map((tx: any) => (
+              {txs.slice(0, 5).map((tx: any) => (
                 <div key={tx.id} style={{
                   padding: '16px', borderRadius: '16px', border: '1px solid var(--border)',
                   background: 'var(--white)', position: 'relative'
@@ -396,14 +435,47 @@ export default function PelangganDetailPage() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <p className="section-label" style={{ marginBottom: 0 }}>💰 Riwayat Pembayaran ({payments.length})</p>
+            {payments.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setShowAllPayments(prev => !prev)}
+                className="btn btn-outline btn-sm"
+                style={{ whiteSpace: 'nowrap', minWidth: '180px' }}
+              >
+                {showAllPayments ? 'Tutup riwayat data' : 'Lihat semua riwayat data'}
+              </button>
+            )}
           </div>
           {payments.length === 0 ? (
             <div className="empty-state" style={{ padding: '24px 16px', background: 'var(--bg)', borderRadius: '16px' }}>
               <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>Belum ada riwayat pembayaran</p>
             </div>
+          ) : showAllPayments ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
+                    <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700 }}>Tanggal</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>Nominal</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>Sisa Hutang</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700 }}>Dibuat Oleh</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((p: any) => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '12px 10px' }}>{formatDateTime(p.tanggal_bayar)}</td>
+                      <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>{formatRupiah(p.nominal_bayar)}</td>
+                      <td style={{ padding: '12px 10px', textAlign: 'right' }}>{formatRupiah(p.sisa_hutang)}</td>
+                      <td style={{ padding: '12px 10px', textAlign: 'center' }}>{p.created_by || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {payments.map((p: any) => (
+              {payments.slice(0, 5).map((p: any) => (
                 <div key={p.id} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   padding: '16px', borderRadius: '16px', background: 'var(--success-light)',

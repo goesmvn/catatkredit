@@ -34,11 +34,11 @@ export const db = {
 };
 
 // Gunakan user_version di database sebagai flag migrasi (lebih reliabel dari variabel in-memory)
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 function _runInit(instance: any) {
   try {
-    const currentVersion = instance.pragma('user_version', { simple: true });
+    let currentVersion = instance.pragma('user_version', { simple: true });
     if (currentVersion >= SCHEMA_VERSION) return;
 
     instance.exec(`
@@ -98,6 +98,7 @@ function _runInit(instance: any) {
       nominal_bayar INTEGER,
       tanggal_bayar INTEGER,
       created_by TEXT,
+      sisa_hutang INTEGER DEFAULT 0,
       created_at INTEGER,
       updated_at INTEGER,
       deleted_at INTEGER
@@ -113,19 +114,25 @@ function _runInit(instance: any) {
     );
   `);
 
-    // Seed default users jika belum ada
-    const adminExists = instance.prepare("SELECT id FROM profiles WHERE username = 'admin'").get();
-    if (!adminExists) {
-      const now = Date.now();
-      instance.prepare(
-        `INSERT INTO profiles (id, username, nama_lengkap, role, pin, created_at, updated_at)
-         VALUES (?, 'admin', 'Admin Toko', 'ADMIN', '123456', ?, ?)`
-      ).run(crypto.randomUUID(), now, now);
+    if (currentVersion < 2) {
+      const columns = instance.prepare("PRAGMA table_info(payments)").all();
+      const hasSisaHutang = columns.some((col: any) => col.name === 'sisa_hutang');
+      if (!hasSisaHutang) {
+        instance.exec('ALTER TABLE payments ADD COLUMN sisa_hutang INTEGER DEFAULT 0');
+      }
 
-      instance.prepare(
-        `INSERT INTO profiles (id, username, nama_lengkap, role, pin, created_at, updated_at)
-         VALUES (?, 'superadmin', 'Super Administrator', 'SUPERADMIN', '888888', ?, ?)`
-      ).run(crypto.randomUUID(), now, now);
+      const customers = instance.prepare('SELECT id, total_hutang FROM customers').all();
+      for (const customer of customers) {
+        let remaining = customer.total_hutang || 0;
+        const payments = instance.prepare(
+          'SELECT id, nominal_bayar FROM payments WHERE customer_id = ? AND deleted_at IS NULL ORDER BY tanggal_bayar DESC'
+        ).all(customer.id);
+        for (const payment of payments) {
+          instance.prepare('UPDATE payments SET sisa_hutang = ? WHERE id = ?')
+            .run(remaining, payment.id);
+          remaining += payment.nominal_bayar || 0;
+        }
+      }
     }
 
     // Tandai migrasi selesai di database itu sendiri

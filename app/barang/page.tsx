@@ -10,6 +10,7 @@ export default function BarangPage() {
   const [showModal, setShowModal] = useState(false)
   const [newItemName, setNewItemName] = useState('')
   const [newItemPrice, setNewItemPrice] = useState('')
+  const [editingItem, setEditingItem] = useState<any>(null)
 
   const fetchItems = async () => {
     try {
@@ -23,13 +24,24 @@ export default function BarangPage() {
   const handleSave = async () => {
     if (!newItemName || !newItemPrice) return
     const price = parseInt(newItemPrice.replace(/\D/g, '') || '0')
-    const id = crypto.randomUUID()
-    await fetch('/api/items', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, nama_barang: newItemName, harga_default: price })
-    })
+
+    if (editingItem) {
+      await fetch(`/api/items/${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nama_barang: newItemName, harga_default: price })
+      })
+    } else {
+      const id = crypto.randomUUID()
+      await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, nama_barang: newItemName, harga_default: price })
+      })
+    }
+
     setShowModal(false)
+    setEditingItem(null)
     setNewItemName('')
     setNewItemPrice('')
     fetchItems()
@@ -117,6 +129,24 @@ export default function BarangPage() {
                       {formatRupiah(item.harga_default)}
                     </p>
                   </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => {
+                      setEditingItem(item)
+                      setNewItemName(item.nama_barang)
+                      setNewItemPrice(String(item.harga_default))
+                      setShowModal(true)
+                    }}
+                    className="btn"
+                    style={{
+                      background: 'var(--primary-light)', color: 'var(--primary)',
+                      padding: '8px', fontSize: '18px',
+                      width: '40px', height: '40px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    ✏️
+                  </button>
                   <button
                     onClick={() => handleDelete(item.id)}
                     className="btn"
@@ -130,6 +160,7 @@ export default function BarangPage() {
                     🗑️
                   </button>
                 </div>
+                </div>
               ))
             )}
           </div>
@@ -139,7 +170,12 @@ export default function BarangPage() {
       {/* FAB */}
       <button
         className="fab"
-        onClick={() => setShowModal(true)}
+        onClick={() => {
+          setEditingItem(null)
+          setNewItemName('')
+          setNewItemPrice('')
+          setShowModal(true)
+        }}
         style={{ bottom: 'calc(var(--nav-h) + 20px)' }}
       >
         +
@@ -157,7 +193,9 @@ export default function BarangPage() {
             width: '100%', maxWidth: '400px', padding: '24px',
             boxShadow: 'var(--shadow-xl)',
           }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '16px' }}>Tambah Barang Baru</h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '16px' }}>
+              {editingItem ? 'Edit Barang' : 'Tambah Barang Baru'}
+            </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label className="section-label">Nama Barang</label>
@@ -179,7 +217,9 @@ export default function BarangPage() {
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
-              <button onClick={handleSave} className="btn btn-xl btn-primary btn-full">Simpan Barang</button>
+              <button onClick={handleSave} className="btn btn-xl btn-primary btn-full">
+                {editingItem ? 'Perbarui Barang' : 'Simpan Barang'}
+              </button>
               <button onClick={() => setShowModal(false)} className="btn btn-ghost btn-xl btn-full">Batal</button>
             </div>
           </div>

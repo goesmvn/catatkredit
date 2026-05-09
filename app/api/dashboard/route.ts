@@ -11,12 +11,12 @@ export async function GET() {
     const payments = db.prepare('SELECT * FROM payments WHERE deleted_at IS NULL').all() as any[];
 
     const totalPiutang = customers.reduce((s: number, c: any) => s + (c.total_hutang || 0), 0);
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toLocaleDateString('id-ID');
     const uangMasukHariIni = payments
       .filter((p: any) => {
         if (!p.tanggal_bayar) return false;
         try {
-          return new Date(p.tanggal_bayar).toISOString().split('T')[0] === todayStr;
+          return new Date(p.tanggal_bayar).toLocaleDateString('id-ID') === todayStr;
         } catch (err) {
           return false;
         }

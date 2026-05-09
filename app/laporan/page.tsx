@@ -67,6 +67,22 @@ export default function LaporanPage() {
     return isWithinDateRange(txDate)
   })
 
+  const activityCustomerIds = new Set<string>([
+    ...filteredPayments.map(p => p.customer_id),
+    ...filteredTxs.map(t => t.customer_id)
+  ])
+  const activeCustomersInRange = customers.filter(c => activityCustomerIds.has(c.id))
+  const statusCounts = activeCustomersInRange.reduce((acc, c) => {
+    if (c.status === 'LANCAR') acc.LANCAR += 1
+    else if (c.status === 'MENUNGGAK') acc.MENUNGGAK += 1
+    else if (c.status === 'BLACKLIST') acc.BLACKLIST += 1
+    else acc.OTHER += 1
+    return acc
+  }, { LANCAR: 0, MENUNGGAK: 0, BLACKLIST: 0, OTHER: 0 })
+  const totalCustomersWithActivity = activeCustomersInRange.length
+  const rangeLabel = startDate || endDate ? `${startDate || 'Awal'} – ${endDate || 'Sekarang'}` : 'Semua Tanggal'
+  const totalPiutangInRange = activeCustomersInRange.reduce((s, c) => s + (c.total_hutang || 0), 0)
+
   const tunggakan = customers.filter(c => c.total_hutang > 0).sort((a, b) => b.total_hutang - a.total_hutang)
   const blacklist = customers.filter(c => c.status === 'BLACKLIST')
   const totalTunggakan = tunggakan.reduce((s, c) => s + c.total_hutang, 0)
@@ -87,6 +103,12 @@ export default function LaporanPage() {
     const late = lastPayment ? daysSince(lastPayment) : 999
     return late >= batasMacet
   })
+
+  const handlePrintCustomerRecap = () => {
+    if (typeof window !== 'undefined') {
+      window.print()
+    }
+  }
 
   // Customer Recapitulation Metrics
   const customerMetrics = customers.map(c => {
@@ -117,6 +139,8 @@ export default function LaporanPage() {
     .filter(c => c.txCount > 0)
     .sort((a, b) => b.loyaltyScore - a.loyaltyScore)
     .slice(0, 10)
+
+  const sortedCustomerMetrics = [...customerMetrics].sort((a, b) => b.total_hutang - a.total_hutang)
 
   const chartData = (() => {
     if (filteredPayments.length === 0) return { data: [], max: 0 }
@@ -185,6 +209,65 @@ export default function LaporanPage() {
               Reset
             </button>
           )}
+        </div>
+      </div>
+
+      <div style={{ padding: '16px' }}>
+        <div className="card" style={{ padding: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>🗓️ Rekap Tanggal</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{rangeLabel}</p>
+            </div>
+            <button onClick={handlePrintCustomerRecap} className="btn btn-primary no-print" style={{ minWidth: '180px' }}>
+              🖨️ Cetak Rekap Semua
+            </button>
+          </div>
+
+          <div style={{ overflowX: 'auto', marginTop: '16px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
+                  <th style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700 }}>Header</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>Nilai</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px 10px' }}>Jumlah Transaksi</td>
+                  <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>{filteredTxs.length}</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px 10px' }}>Jumlah Pembayaran</td>
+                  <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>{filteredPayments.length}</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px 10px' }}>Pelanggan Pada Rentang</td>
+                  <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>{totalCustomersWithActivity}</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px 10px' }}>Status Lancar</td>
+                  <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>{statusCounts.LANCAR}</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px 10px' }}>Status Menunggak</td>
+                  <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>{statusCounts.MENUNGGAK}</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px 10px' }}>Status Blacklist</td>
+                  <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>{statusCounts.BLACKLIST}</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px 10px' }}>Status lainnya</td>
+                  <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>{statusCounts.OTHER}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '12px 10px' }}>Total Sisa Piutang</td>
+                  <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>{formatRupiah(totalPiutangInRange)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -473,10 +556,70 @@ export default function LaporanPage() {
               </div>
             </div>
 
-            <div>
-              <p className="section-label">📋 Rekapitulasi Semua Pelanggan</p>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '24px' }}>
+              <div>
+                <p className="section-label" style={{ marginBottom: '8px' }}>📇 Kartu Rekapan Kredit per Pelanggan</p>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '640px' }}>
+                  Ringkasan kredit setiap pelanggan agar laporan tetap mudah dibaca meskipun data pelanggan banyak.
+                </p>
+              </div>
+              <button onClick={handlePrintCustomerRecap} className="btn btn-primary no-print" style={{ minWidth: '190px' }}>
+                🖨️ Cetak Rekap Semua
+              </button>
+            </div>
+
+            <div className="print-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              {sortedCustomerMetrics.map(c => {
+                const lastPayment = getLastPaymentDate(c.id)
+                return (
+                  <div key={c.id} className="card print-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '220px' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
+                        <div>
+                          <p style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>{c.nama}</p>
+                          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{c.alamat || '-'}</p>
+                        </div>
+                        <span className={`status-badge ${c.status === 'BLACKLIST' ? 'status-blacklist' : c.total_hutang > 0 ? 'status-menunggak' : 'status-lancar'}`} style={{ whiteSpace: 'nowrap' }}>
+                          {c.status === 'BLACKLIST' ? 'BLACKLIST' : c.total_hutang > 0 ? 'MENUNGGAK' : 'LANCAR'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '16px' }}>
+                        <div style={{ padding: '12px', borderRadius: '14px', background: 'var(--primary-light)' }}>
+                          <p style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 700, marginBottom: '4px' }}>Transaksi</p>
+                          <p style={{ fontSize: '18px', fontWeight: 800 }}>{c.txCount}</p>
+                        </div>
+                        <div style={{ padding: '12px', borderRadius: '14px', background: 'var(--success-light)' }}>
+                          <p style={{ fontSize: '11px', color: 'var(--success)', fontWeight: 700, marginBottom: '4px' }}>Pembayaran</p>
+                          <p style={{ fontSize: '18px', fontWeight: 800 }}>{c.paymentCount}</p>
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: '16px' }}>
+                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Total Belanja</p>
+                        <p style={{ fontSize: '18px', fontWeight: 800, color: 'var(--primary)' }}>{formatRupiah(c.totalBeli)}</p>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '18px', padding: '14px', borderRadius: '16px', background: c.total_hutang > 0 ? 'var(--danger-light)' : 'var(--success-light)', border: `1px solid ${c.total_hutang > 0 ? 'rgba(192,57,43,0.2)' : 'rgba(26,127,75,0.2)'}` }}>
+                      <p style={{ fontSize: '12px', color: c.total_hutang > 0 ? 'var(--danger)' : 'var(--success)', marginBottom: '6px', fontWeight: 700 }}>Sisa Hutang</p>
+                      <p style={{ fontSize: '20px', fontWeight: 800, color: c.total_hutang > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                        {c.total_hutang > 0 ? formatRupiah(c.total_hutang) : 'LUNAS'}
+                      </p>
+                      {lastPayment && (
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                          Terakhir bayar {formatDate(lastPayment)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <p className="section-label">📋 Rekapitulasi Semua Pelanggan</p>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
                       <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 700 }}>Nama</th>
@@ -507,7 +650,6 @@ export default function LaporanPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
           </>
         )}
       </div>

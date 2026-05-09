@@ -220,25 +220,32 @@ export const updateSettings = (newSettings: Partial<AppSettings>) => {
 }
 
 // Helpers
-export const formatRupiah = (n: number): string => {
-  return 'Rp ' + n.toLocaleString('id-ID')
+export const formatRupiah = (n: number | null | undefined): string => {
+  const value = typeof n === 'number' && !Number.isNaN(n) ? n : 0
+  return 'Rp ' + value.toLocaleString('id-ID')
 }
 
-export const formatDate = (d: string | number | Date): string => {
-  return new Date(d).toLocaleDateString('id-ID', {
+export const formatDate = (d: string | number | Date | null | undefined): string => {
+  const date = d == null ? null : new Date(d)
+  if (!date || Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString('id-ID', {
     day: 'numeric', month: 'short', year: 'numeric'
   })
 }
 
-export const formatDateTime = (d: string | number | Date): string => {
-  return new Date(d).toLocaleString('id-ID', {
+export const formatDateTime = (d: string | number | Date | null | undefined): string => {
+  const date = d == null ? null : new Date(d)
+  if (!date || Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleString('id-ID', {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   })
 }
 
-export const daysSince = (d: string | number | Date): number => {
-  const diff = Date.now() - new Date(d).getTime()
+export const daysSince = (d: string | number | Date | null | undefined): number => {
+  const date = d == null ? null : new Date(d)
+  if (!date || Number.isNaN(date.getTime())) return 0
+  const diff = Date.now() - date.getTime()
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 }
 
