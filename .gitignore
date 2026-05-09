@@ -11,4 +11,5 @@ catatbon.db*
 *.db-journal
 *.db-shm
 *.db-wal
+*.swp
 .agent
