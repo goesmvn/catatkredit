@@ -48,7 +48,7 @@ function BonBaruForm() {
   )
   const filteredItems = dbItems.filter(i => i.nama_barang.toLowerCase().includes(itemSearch.toLowerCase()))
 
-  const addItemToCart = (item: { id: string, nama: string, harga_default: number }) => {
+  const addItemToCart = (item: { id: string, nama_barang: string, harga_default: number }) => {
     setCart(prev => {
       const existing = prev.find(p => p.id === item.id)
       if (existing) {
@@ -56,7 +56,7 @@ function BonBaruForm() {
       } else {
         return [...prev, {
           id: item.id,
-          nama_barang: item.nama,
+          nama_barang: item.nama_barang,
           qty: 1,
           harga_satuan: item.harga_default,
           subtotal: item.harga_default
@@ -79,7 +79,7 @@ function BonBaruForm() {
     const newItem = await res.json()
     const updatedItems = await fetch('/api/items').then(r => r.json())
     setDbItems(updatedItems)
-    addItemToCart({ id: newItem.id, nama: newItem.nama_barang, harga_default: 0 })
+    addItemToCart({ id: newItem.id, nama_barang: newItem.nama_barang, harga_default: 0 })
   }
 
   const handleAddNewCustomer = (name: string) => {
@@ -296,7 +296,7 @@ function BonBaruForm() {
                 maxHeight: '220px', overflowY: 'auto',
               }}>
                 {filteredItems.map(i => (
-                  <button key={i.id} onClick={() => addItemToCart({ id: i.id, nama: i.nama_barang, harga_default: i.harga_default })}
+                  <button key={i.id} onClick={() => addItemToCart({ id: i.id, nama_barang: i.nama_barang, harga_default: i.harga_default })}
                     style={{
                       width: '100%', padding: '12px 16px', background: 'transparent', border: 'none',
                       borderRadius: 'var(--radius-md)', textAlign: 'left', cursor: 'pointer',
@@ -388,16 +388,21 @@ function BonBaruForm() {
           </div>
           <button 
             onClick={handleSave} 
-            className="btn btn-primary"
+            className={`btn btn-primary ${isSaving ? 'btn-loading' : ''}`}
             disabled={isSaving || grandTotal === 0 || !selectedCustomerId}
             style={{
               padding: '10px 20px', borderRadius: '50px', fontSize: '15px', fontWeight: 700,
               boxShadow: '0 4px 12px rgba(27,108,168,0.25)',
               opacity: (grandTotal > 0 && selectedCustomerId && !isSaving) ? 1 : 0.6,
               cursor: isSaving ? 'not-allowed' : 'pointer',
-              height: 'auto', minHeight: '44px'
+              height: 'auto', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
             }}>
-            {isSaving ? 'Menyimpan...' : 'Simpan Kredit'}
+            {isSaving ? (
+              <>
+                <span className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.7)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
+                Menyimpan...
+              </>
+            ) : 'Simpan Kredit'}
           </button>
         </div>
       </div>
@@ -513,14 +518,27 @@ function BonBaruForm() {
               </button>
               <button 
                 onClick={handleConfirmSave} 
-                className="btn btn-primary btn-lg" 
-                style={{ flex: 1, borderRadius: '100px', fontWeight: 800, opacity: isSaving ? 0.7 : 1 }}
+                className={`btn btn-primary btn-lg ${isSaving ? 'btn-loading' : ''}`} 
+                style={{ flex: 1, borderRadius: '100px', fontWeight: 800, opacity: isSaving ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                 disabled={isSaving}
               >
-                {isSaving ? 'Menyimpan...' : 'Ya, Simpan'}
+                {isSaving ? (
+                  <>
+                    <span className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.7)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
+                    Menyimpan...
+                  </>
+                ) : 'Ya, Simpan'}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {isSaving && (
+        <div className="fs-overlay">
+          <div className="fs-overlay__spinner" />
+          <div className="fs-overlay__text">Menyimpan kredit...</div>
+          <div className="fs-overlay__sub">Mohon tunggu, data kredit sedang dicatat.</div>
         </div>
       )}
 

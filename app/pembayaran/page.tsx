@@ -24,6 +24,7 @@ function PembayaranForm() {
   const [showReceipt, setShowReceipt] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [sisaHutang, setSisaHutang] = useState(0)
+  const [isSaving, setIsSaving] = useState(false)
 
   const settings = getSettings()
   const customer = dbCustomers.find(c => c.id === selected)
@@ -55,6 +56,7 @@ function PembayaranForm() {
   }
 
   const handleConfirmSave = async () => {
+    setIsSaving(true)
     try {
       const id = crypto.randomUUID()
       const res = await fetch('/api/payments', {
@@ -80,6 +82,8 @@ function PembayaranForm() {
       console.error(err)
       alert('Gagal menyimpan pembayaran')
       setShowSuccessModal(false)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -294,18 +298,34 @@ function PembayaranForm() {
                       onClick={() => setShowSuccessModal(false)} 
                       className="btn btn-ghost btn-lg" 
                       style={{ flex: 1, borderRadius: '100px', fontWeight: 700 }}
+                      disabled={isSaving}
                     >
                       Batal
                     </button>
                     <button 
                       onClick={handleConfirmSave} 
-                      className="btn btn-primary btn-lg" 
-                      style={{ flex: 1, borderRadius: '100px', fontWeight: 800 }}
+                      className={`btn btn-primary btn-lg ${isSaving ? 'btn-loading' : ''}`} 
+                      style={{ flex: 1, borderRadius: '100px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                      disabled={isSaving}
                     >
-                      Ya, Simpan
+                      {isSaving ? (
+                        <>
+                          <span className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.7)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
+                          Menyimpan...
+                        </>
+                      ) : 'Ya, Simpan'}
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Saving overlay */}
+            {isSaving && (
+              <div className="fs-overlay">
+                <div className="fs-overlay__spinner" />
+                <div className="fs-overlay__text">Menyimpan pembayaran...</div>
+                <div className="fs-overlay__sub">Mohon tunggu, data sedang dicatat.</div>
               </div>
             )}
 

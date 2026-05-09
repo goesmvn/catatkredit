@@ -13,7 +13,7 @@ interface UserProfile {
 
 interface AuthContextType {
   user: UserProfile | null
-  login: (username: string, pin: string) => Promise<{ error?: string }>
+  login: (username: string, pin: string, rememberDevice?: boolean) => Promise<{ error?: string }>
   logout: () => Promise<void>
   isReady: boolean
 }
@@ -30,20 +30,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
-    // Muat user dari localStorage jika ada
-    const saved = localStorage.getItem('catatbon_user')
-    if (saved) {
-      try {
-        setUser(JSON.parse(saved))
-      } catch (e) {
-        // ignore
+    const remember = localStorage.getItem('catatbon_remember') === 'true'
+    if (remember) {
+      const saved = localStorage.getItem('catatbon_user')
+      if (saved) {
+        try {
+          setUser(JSON.parse(saved))
+        } catch (e) {
+          // ignore
+        }
       }
     }
     setIsReady(true)
   }, [])
 
-  const login = async (username: string, pin: string) => {
+  const login = async (username: string, pin: string, rememberDevice = false) => {
     const lowerUsername = username.toLowerCase();
+    const saveLogin = (u: UserProfile) => {
+      setUser(u)
+      if (rememberDevice) {
+        localStorage.setItem('catatbon_user', JSON.stringify(u))
+        localStorage.setItem('catatbon_remember', 'true')
+      } else {
+        localStorage.removeItem('catatbon_user')
+        localStorage.removeItem('catatbon_remember')
+      }
+    }
 
     // 1. Fallback Admin Default
     if (lowerUsername === 'admin' && pin === '123456') {
@@ -53,8 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         nama_lengkap: 'Admin Utama',
         role: 'ADMIN'
       }
-      setUser(u)
-      localStorage.setItem('catatbon_user', JSON.stringify(u))
+      saveLogin(u)
       return {}
     }
 
@@ -65,8 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         nama_lengkap: 'Super Administrator',
         role: 'SUPERADMIN'
       }
-      setUser(u)
-      localStorage.setItem('catatbon_user', JSON.stringify(u))
+      saveLogin(u)
       return {}
     }
     
@@ -85,8 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           nama_lengkap: found.nama_lengkap,
           role: found.role as Role
         }
-        setUser(u)
-        localStorage.setItem('catatbon_user', JSON.stringify(u))
+        saveLogin(u)
         return {}
       }
     } catch (err) {
@@ -99,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setUser(null)
     localStorage.removeItem('catatbon_user')
+    localStorage.removeItem('catatbon_remember')
   }
 
   return (

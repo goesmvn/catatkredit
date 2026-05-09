@@ -10,6 +10,7 @@ export default function LoginPage() {
   
   const [username, setUsername] = useState('')
   const [pin, setPin] = useState('')
+  const [rememberDevice, setRememberDevice] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -23,7 +24,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     
-    const { error: loginError } = await login(username, pin)
+    const { error: loginError } = await login(username, pin, rememberDevice)
     
     setLoading(false)
     if (loginError) {
@@ -119,10 +120,21 @@ export default function LoginPage() {
             />
           </div>
 
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)', fontSize: '14px' }}>
+            <input
+              type="checkbox"
+              checked={rememberDevice}
+              onChange={(e) => setRememberDevice(e.target.checked)}
+              disabled={loading}
+              style={{ width: '16px', height: '16px' }}
+            />
+            Ingat device ini agar tidak perlu login lagi di perangkat ini
+          </label>
+
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary btn-xl btn-full"
+            className="btn btn-primary btn-xl btn-full btn-action"
             style={{ 
               marginTop: '16px', 
               borderRadius: '16px', 
@@ -132,7 +144,12 @@ export default function LoginPage() {
               boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
             }}
           >
-            {loading ? 'Memproses...' : 'Masuk ke Dasbor'}
+            {loading ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+                <span className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.6)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
+                Memproses...
+              </span>
+            ) : 'Masuk ke Dasbor'}
           </button>
         </form>
       </div>
