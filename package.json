@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:idempotency:tx": "bash ./scripts/test-idempotency-transactions.sh",
+    "test:idempotency:pay": "bash ./scripts/test-idempotency-payments.sh",
+    "test:idempotency": "bash ./scripts/test-idempotency-transactions.sh && bash ./scripts/test-idempotency-payments.sh"
   },
   "dependencies": {
     "@nozbe/watermelondb": "^0.27.1",

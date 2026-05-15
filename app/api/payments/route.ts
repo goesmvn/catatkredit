@@ -17,6 +17,11 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { id, customer_id, nominal_bayar, tanggal_bayar, created_by } = body;
+    // Idempotency: jika pembayaran dengan id ini sudah ada, kembalikan saja
+    if (id) {
+      const exists = db.prepare('SELECT * FROM payments WHERE id = ?').get(id);
+      if (exists) return NextResponse.json(exists, { status: 200 });
+    }
     const now = Date.now();
 
     const insertPayment = db.transaction(() => {

@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { getSettings, updateSettings, AppSettings } from '@/lib/mockData'
+import { useState, useEffect } from 'react'
+import { mockSettings, AppSettings } from '@/lib/mockData'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 
 export default function PengaturanPage() {
   const { user, logout } = useAuth()
-  const [settings, setSettings] = useState<AppSettings>(getSettings())
+  const [settings, setSettings] = useState<AppSettings>(mockSettings)
   const [showToast, setShowToast] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [isBackingUp, setIsBackingUp] = useState(false)
@@ -25,11 +25,37 @@ export default function PengaturanPage() {
     }))
   }
 
-  const handleSave = () => {
-    updateSettings(settings)
-    setShowToast(true)
-    setTimeout(() => setShowToast(false), 3000)
+  const handleSave = async () => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setShowToast(true)
+      setTimeout(() => setShowToast(false), 3000)
+    } catch (e) {
+      alert('Gagal menyimpan pengaturan. Silakan coba lagi.')
+      console.error(e)
+    }
   }
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await fetch('/api/settings')
+        if (!res.ok) return
+        const data = await res.json()
+        if (!mounted) return
+        setSettings(prev => ({ ...prev, ...data, batas_menunggak_hari: Number(data.batas_menunggak_hari || prev.batas_menunggak_hari) }))
+      } catch (e) {
+        console.error('Gagal memuat pengaturan dari server', e)
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
 
   const handleBackup = async () => {
     setIsBackingUp(true)

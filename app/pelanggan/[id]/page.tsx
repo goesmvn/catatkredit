@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { formatRupiah, formatDate, formatDateTime, getSettings } from '@/lib/mockData'
+import { formatRupiah, formatDate, formatDateTime } from '@/lib/mockData'
+import { useSettings } from '@/lib/hooks/useSettings'
 import { notFound } from 'next/navigation'
 
 const daysSince = (d: number): number => Math.floor((Date.now() - d) / 86400000)
@@ -67,7 +68,7 @@ export default function PelangganDetailPage() {
     </div>
   )
 
-  const settings = getSettings()
+  const settings = useSettings()
   const nowMs = Date.now()
   const batasMs = (settings.batas_menunggak_hari || 30) * 86400000
   const isBlacklisted = customer.status === 'BLACKLIST'

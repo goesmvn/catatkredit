@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { formatRupiah } from '@/lib/mockData'
-import { getSettings } from '@/lib/mockData'
+import { useSettings } from '@/lib/hooks/useSettings'
 
 type CustomerStatus = 'LANCAR' | 'BLACKLIST' | 'MENUNGGAK'
 
@@ -13,7 +13,7 @@ export default function PelangganPage() {
   const [customers, setCustomers] = useState<any[]>([])
   const [transactions, setTransactions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const settings = getSettings()
+  const settings = useSettings()
 
   const fetchData = async () => {
     try {

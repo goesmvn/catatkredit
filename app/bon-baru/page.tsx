@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { formatRupiah } from '@/lib/mockData'
 import { useAuth } from '@/lib/auth'
@@ -39,6 +39,7 @@ function BonBaruForm() {
   const [newCustomerForm, setNewCustomerForm] = useState({ nama: '', alamat: '', no_hp: '', ciri_ciri: '' })
   const [isSaving, setIsSaving] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const savingRef = useRef(false)
   const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null)
 
   const selectedCustomer = dbCustomers.find(c => c.id === selectedCustomerId)
@@ -132,6 +133,8 @@ function BonBaruForm() {
   }
 
   const handleConfirmSave = async () => {
+    if (savingRef.current) return
+    savingRef.current = true
     setIsSaving(true)
     setShowConfirmModal(false)
     try {
@@ -164,6 +167,7 @@ function BonBaruForm() {
       alert('Terjadi kesalahan saat menyimpan kredit')
     } finally {
       setIsSaving(false)
+      savingRef.current = false
     }
   }
 
@@ -389,7 +393,7 @@ function BonBaruForm() {
           <button 
             onClick={handleSave} 
             className={`btn btn-primary ${isSaving ? 'btn-loading' : ''}`}
-            disabled={isSaving || grandTotal === 0 || !selectedCustomerId}
+            disabled={isSaving || showConfirmModal || grandTotal === 0 || !selectedCustomerId}
             style={{
               padding: '10px 20px', borderRadius: '50px', fontSize: '15px', fontWeight: 700,
               boxShadow: '0 4px 12px rgba(27,108,168,0.25)',

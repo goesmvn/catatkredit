@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { formatRupiah, getSettings } from '@/lib/mockData'
+import { formatRupiah } from '@/lib/mockData'
+import { useSettings } from '@/lib/hooks/useSettings'
 import { useAuth } from '@/lib/auth'
 
 function PembayaranForm() {
@@ -18,6 +19,7 @@ function PembayaranForm() {
 
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(preSelectId || '')
+  const [initialTotalHutang, setInitialTotalHutang] = useState<number | null>(null)
   const [showDropdown, setShowDropdown] = useState(false)
   const [nominal, setNominal] = useState('')
   const [saved, setSaved] = useState(false)
@@ -25,8 +27,9 @@ function PembayaranForm() {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [sisaHutang, setSisaHutang] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
+  const savingRef = useRef(false)
 
-  const settings = getSettings()
+  const settings = useSettings()
   const customer = dbCustomers.find(c => c.id === selected)
   const nominalNum = parseInt(nominal.replace(/\D/g, '')) || 0
   const previewSisa = customer ? Math.max(0, customer.total_hutang - nominalNum) : 0
@@ -55,7 +58,21 @@ function PembayaranForm() {
     setShowSuccessModal(true)
   }
 
+  // keep track of the customer's total hutang at the moment they were selected
+  useEffect(() => {
+    if (!selected) {
+      setInitialTotalHutang(null)
+      return
+    }
+    const c = dbCustomers.find((x: any) => x.id === selected)
+    if (c && !saved) {
+      setInitialTotalHutang(c.total_hutang || 0)
+    }
+  }, [selected, dbCustomers, saved])
+
   const handleConfirmSave = async () => {
+    if (savingRef.current) return
+    savingRef.current = true
     setIsSaving(true)
     try {
       const id = crypto.randomUUID()
@@ -84,6 +101,7 @@ function PembayaranForm() {
       setShowSuccessModal(false)
     } finally {
       setIsSaving(false)
+      savingRef.current = false
     }
   }
 
@@ -197,9 +215,9 @@ function PembayaranForm() {
                 <button onClick={() => { setSelected(''); setNominal(''); setSaved(false); setShowReceipt(false) }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: 'var(--text-muted)' }}>✕</button>
               </div>
-              <p style={{ fontSize: '14px', color: 'var(--text-sub)', marginBottom: '4px' }}>Total Sisa Hutang</p>
+              <p style={{ fontSize: '14px', color: 'var(--text-sub)', marginBottom: '4px' }}>Total Hutang (sebelum bayar)</p>
               <p className="big-number" style={{ fontSize: '52px', color: 'var(--danger)' }}>
-                {formatRupiah(customer?.total_hutang || 0)}
+                {formatRupiah((saved && initialTotalHutang != null) ? initialTotalHutang : (customer?.total_hutang || 0))}
               </p>
             </div>
 
@@ -270,8 +288,8 @@ function PembayaranForm() {
                 <button
                   onClick={handleSave}
                   className="btn btn-success btn-xl btn-full"
-                  disabled={isOverLimit || nominalNum <= 0}
-                  style={{ marginTop: '16px', opacity: (isOverLimit || nominalNum <= 0) ? 0.5 : 1, cursor: isOverLimit ? 'not-allowed' : 'pointer' }}
+                  disabled={isOverLimit || nominalNum <= 0 || showSuccessModal}
+                  style={{ marginTop: '16px', opacity: (isOverLimit || nominalNum <= 0 || showSuccessModal) ? 0.5 : 1, cursor: isOverLimit ? 'not-allowed' : 'pointer' }}
                 >
                   💾 Simpan Pembayaran
                 </button>
@@ -333,36 +351,29 @@ function PembayaranForm() {
             {showReceipt && (
               <div>
                 <div className="receipt">
-                  <div style={{ textAlign: 'center', marginBottom: '12px' }}>
-                    <p style={{ fontWeight: 700, fontSize: '16px' }}>{settings.nama_toko}</p>
-                    <p style={{ fontSize: '13px' }}>{settings.alamat_toko}</p>
-                    <p style={{ fontSize: '12px' }}>Telp: {settings.no_telepon}</p>
+                  <div className="receipt__header">
+                    <div className="receipt__store-name">{settings.nama_toko}</div>
+                    <div className="receipt__store-meta">{settings.alamat_toko}</div>
+                    <div className="receipt__store-meta">Telp: {settings.no_telepon}</div>
                     <hr />
-                    <p style={{ fontSize: '13px' }}>BUKTI PEMBAYARAN CICILAN</p>
-                    <p style={{ fontSize: '12px' }}>
-                      {now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} —{' '}
-                      {now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    <div className="receipt__title">BUKTI PEMBAYARAN CICILAN</div>
+                    <div className="receipt__store-meta">{now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} — {now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
                   <hr />
-                  <div style={{ fontSize: '18px', padding: '8px 0', lineHeight: 2 }}>
-                    <p>Pelanggan : <strong>{customer?.nama}</strong></p>
-                    <p>Bayar     : <strong style={{ fontSize: '22px' }}>{formatRupiah(nominalNum)}</strong></p>
-                    <p style={{
-                      marginTop: '12px', fontSize: '24px', fontWeight: 900,
-                      background: 'var(--warning-light)', padding: '8px 12px',
-                      borderRadius: '8px', border: '2px dashed var(--warning)',
-                      color: 'var(--danger)', display: 'inline-block', width: '100%'
-                    }}>
-                      Sisa : {sisaHutang <= 0 ? 'LUNAS' : formatRupiah(sisaHutang)}
-                    </p>
+                  <div className="receipt__body">
+                    <div className="receipt__row"><div className="receipt__label">Pelanggan</div><div className="receipt__value">{customer?.nama}</div></div>
+                    {initialTotalHutang != null && (
+                      <div className="receipt__row"><div className="receipt__label">Sebelum</div><div className="receipt__value">{formatRupiah(initialTotalHutang)}</div></div>
+                    )}
+                    <div className="receipt__row"><div className="receipt__label">Bayar</div><div className="receipt__value">{formatRupiah(nominalNum)}</div></div>
+                    <div className="receipt__callout">Sisa : {sisaHutang <= 0 ? 'LUNAS' : formatRupiah(sisaHutang)}</div>
                   </div>
                   <hr />
-                  <p style={{ textAlign: 'center', fontSize: '13px' }}>
-                    {sisaHutang <= 0 ? '🎉 Terima kasih! Hutang Anda sudah LUNAS!' : `Terima kasih! Sisa hutang Anda ${formatRupiah(sisaHutang)}`}
-                  </p>
+                  <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                    <p style={{ fontSize: '13px' }}>{sisaHutang <= 0 ? '🎉 Terima kasih! Hutang Anda sudah LUNAS!' : `Terima kasih! Sisa hutang Anda ${formatRupiah(sisaHutang)}`}</p>
+                  </div>
                   <hr style={{ margin: '12px 0' }} />
-                  <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
+                  <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
                 </div>
                 <button
                   onClick={() => {

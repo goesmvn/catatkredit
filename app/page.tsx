@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { formatRupiah, getSettings } from '@/lib/mockData'
+import { formatRupiah } from '@/lib/mockData'
+import { useSettings } from '@/lib/hooks/useSettings'
 
 const daysSince = (d: number): number => Math.floor((Date.now() - d) / 86400000)
 
 export default function DashboardPage() {
-  const settings = getSettings()
+  const settings = useSettings()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -18,7 +19,27 @@ export default function DashboardPage() {
         throw new Error(await res.text());
       }
       const json = await res.json()
-      setData(json)
+
+      // Defensive normalization: ensure customers/transactions/payments are arrays
+      const normalizeArray = (v: any) => {
+        if (Array.isArray(v)) return v
+        if (v && typeof v === 'object') return Object.values(v)
+        return []
+      }
+
+      const customersArr = normalizeArray(json.customers)
+      const transactionsArr = normalizeArray(json.transactions)
+      const paymentsArr = normalizeArray(json.payments)
+
+      if (!Array.isArray(json.customers) || !Array.isArray(json.transactions) || !Array.isArray(json.payments)) {
+        console.warn('Normalized dashboard response arrays', {
+          customersType: typeof json.customers,
+          transactionsType: typeof json.transactions,
+          paymentsType: typeof json.payments,
+        })
+      }
+
+      setData({ ...json, customers: customersArr, transactions: transactionsArr, payments: paymentsArr })
     } catch (e) {
       console.error("Dashboard fetch error:", e)
       setData({ totalPiutang: 0, uangMasukHariIni: 0, customers: [], transactions: [], payments: [] })

@@ -8,6 +8,10 @@ let dbInstance: any = null;
 
 function getDB() {
   if (!dbInstance || !dbInstance.open) {
+    // Debug: log which DB path is being opened by the server
+    try {
+      console.log('[sqlite] opening DB at', dbPath)
+    } catch (e) {}
     dbInstance = new Database(dbPath);
     try {
       dbInstance.pragma('journal_mode = WAL');
@@ -21,8 +25,24 @@ function getDB() {
 }
 
 export const db = {
-  prepare: (sql: string) => getDB().prepare(sql),
-  exec: (sql: string) => getDB().exec(sql),
+  prepare: (sql: string) => {
+    try {
+      return getDB().prepare(sql)
+    } catch (e: any) {
+      // Attempt to recover from disk I/O / stale handle by closing and reopening DB once
+      try { if (dbInstance) { dbInstance.close(); dbInstance = null } } catch (closeErr) { /* ignore */ }
+      // try again
+      return getDB().prepare(sql)
+    }
+  },
+  exec: (sql: string) => {
+    try {
+      return getDB().exec(sql)
+    } catch (e: any) {
+      try { if (dbInstance) { dbInstance.close(); dbInstance = null } } catch (closeErr) { /* ignore */ }
+      return getDB().exec(sql)
+    }
+  },
   transaction: (fn: any) => getDB().transaction(fn),
   pragma: (sql: string) => getDB().pragma(sql),
   close: () => {
@@ -33,8 +53,12 @@ export const db = {
   }
 };
 
+export function getDbPath() {
+  return dbPath;
+}
+
 // Gunakan user_version di database sebagai flag migrasi (lebih reliabel dari variabel in-memory)
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 function _runInit(instance: any) {
   try {
@@ -111,6 +135,12 @@ function _runInit(instance: any) {
       created_at INTEGER,
       updated_at INTEGER,
       deleted_at INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at INTEGER
     );
   `);
 

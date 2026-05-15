@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatRupiah, formatDate, formatDateTime, daysSince, getSettings } from '@/lib/mockData'
+import { formatRupiah, formatDate, formatDateTime, daysSince } from '@/lib/mockData'
+import { useSettings } from '@/lib/hooks/useSettings'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 
@@ -96,7 +97,7 @@ export default function LaporanPage() {
     return new Date(Math.max(...custPayments.map(p => p.tanggal_bayar)))
   }
 
-  const settings = getSettings()
+  const settings = useSettings()
   const batasMacet = settings.batas_menunggak_hari || 30
   const kreditMacet = tunggakan.filter(c => {
     const lastPayment = getLastPaymentDate(c.id)

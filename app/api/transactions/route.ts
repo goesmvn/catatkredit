@@ -18,6 +18,11 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { id, customer_id, total_harga, tanggal, status, created_by, items } = body;
+    // Idempotency: jika transaksi dengan id ini sudah ada, kembalikan saja
+    if (id) {
+      const exists = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
+      if (exists) return NextResponse.json(exists, { status: 200 });
+    }
     const now = Date.now();
 
     const insertTx = db.transaction(() => {
