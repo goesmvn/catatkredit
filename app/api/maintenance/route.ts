@@ -1,14 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db, initDB } from '@/lib/db/server/sqlite';
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
+import { Buffer } from 'buffer';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+// Helper function untuk mengatasi TypeScript strict-mode di block catch
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+export async function GET(request: NextRequest) {
   // BACKUP operation
   try {
     const dbPath = process.env.SQLITE_DB_PATH || path.join(process.cwd(), 'catatbon.db');
@@ -19,10 +26,10 @@ export async function GET(request: Request) {
     // Ensure WAL is checkpointed so the main DB file contains latest data
     try {
       // If `db` is available, force a checkpoint which will flush WAL into the main DB
-      db.exec('PRAGMA wal_checkpoint(TRUNCATE)')
-    } catch (ckErr) {
+      db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    } catch (ckErr: unknown) {
       // Non-fatal: continue to read file, but warn
-      console.warn('WAL checkpoint failed before backup:', ckErr)
+      console.warn('WAL checkpoint failed before backup:', getErrorMessage(ckErr));
     }
 
     const fileBuffer = fs.readFileSync(dbPath);
@@ -33,12 +40,12 @@ export async function GET(request: Request) {
         'Content-Disposition': `attachment; filename="backup_catatbon_${new Date().toISOString().split('T')[0]}.db"`,
       },
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action');
 
@@ -51,10 +58,11 @@ export async function POST(request: Request) {
       console.log('[maintenance] opening temporary Database instance for reset');
       const tempDb = new Database(dbPath);
       console.log('[maintenance] temporary Database opened, proceeding with transaction');
+      
       try {
         try {
           tempDb.pragma('journal_mode = WAL');
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
 
         tempDb.transaction(() => {
           tempDb.prepare('DELETE FROM transaction_items').run();
@@ -65,28 +73,32 @@ export async function POST(request: Request) {
 
           try {
             tempDb.prepare("DELETE FROM sqlite_sequence").run();
-          } catch (seqErr) {
+          } catch {
             // Ignore if sqlite_sequence doesn't exist
           }
         })();
       } finally {
-        try { tempDb.close(); } catch (e) { /* ignore */ }
+        try { tempDb.close(); } catch { /* ignore */ }
       }
 
       // Ensure module-level wrapper re-initializes if needed
-      try { initDB(); } catch (initErr) { console.warn('initDB() after reset failed:', initErr) }
+      try { 
+        initDB(); 
+      } catch (initErr: unknown) { 
+        console.warn('initDB() after reset failed:', getErrorMessage(initErr)); 
+      }
 
       return NextResponse.json({ success: true, message: 'Database has been reset' });
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Reset Database Error:', e);
-      return NextResponse.json({ error: e.message }, { status: 500 });
+      return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 });
     }
   }
 
   if (action === 'restore') {
     try {
       const formData = await request.formData();
-      const file = formData.get('file') as File;
+      const file = formData.get('file') as File | null;
       if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
       const bytes = await file.arrayBuffer();
@@ -104,7 +116,7 @@ export async function POST(request: Request) {
         // Use a fresh Database instance for the main DB to avoid module-level reopening issues
         const mainDb = new Database(mainDbPath);
         try {
-          try { mainDb.pragma('journal_mode = WAL'); } catch (_) { }
+          try { mainDb.pragma('journal_mode = WAL'); } catch { }
 
           const escapedTmp = tmpPath.replace(/'/g, "''");
           mainDb.exec(`ATTACH DATABASE '${escapedTmp}' AS src;`);
@@ -112,17 +124,18 @@ export async function POST(request: Request) {
           // Determine which tables exist in the source
           let srcTables: string[] = [];
           try {
-            const rows: any[] = mainDb.prepare("SELECT name FROM src.sqlite_master WHERE type='table'").all();
+            // Explicitly cast to an array of objects to fix TS errors
+            const rows = mainDb.prepare("SELECT name FROM src.sqlite_master WHERE type='table'").all() as { name: string }[];
             srcTables = rows.map(r => r.name).filter(Boolean);
-          } catch (e) {
-            console.warn('[maintenance] could not list src tables:', e);
+          } catch (e: unknown) {
+            console.warn('[maintenance] could not list src tables:', getErrorMessage(e));
           }
 
           const tables = ['profiles','customers','item_tags','transactions','transaction_items','payments','settings'];
 
           // Copy data inside a single transaction; disable foreign keys during copy
           mainDb.transaction(() => {
-            try { mainDb.exec('PRAGMA foreign_keys = OFF'); } catch(_) {}
+            try { mainDb.exec('PRAGMA foreign_keys = OFF'); } catch { }
 
             for (const t of tables) {
               if (!srcTables.includes(t)) {
@@ -132,14 +145,14 @@ export async function POST(request: Request) {
 
               try {
                 mainDb.exec(`DELETE FROM ${t}`);
-              } catch (delErr) {
-                console.warn('[maintenance] delete failed for', t, delErr?.message || delErr);
+              } catch (delErr: unknown) {
+                console.warn('[maintenance] delete failed for', t, getErrorMessage(delErr));
               }
 
               try {
                 mainDb.exec(`INSERT INTO ${t} SELECT * FROM src.${t}`);
-              } catch (insErr) {
-                console.warn('[maintenance] insert failed for', t, insErr?.message || insErr);
+              } catch (insErr: unknown) {
+                console.warn('[maintenance] insert failed for', t, getErrorMessage(insErr));
               }
             }
 
@@ -148,31 +161,35 @@ export async function POST(request: Request) {
               try {
                 mainDb.exec('DELETE FROM sqlite_sequence');
                 mainDb.exec('INSERT INTO sqlite_sequence SELECT * FROM src.sqlite_sequence');
-              } catch (seqErr) {
-                console.warn('[maintenance] sqlite_sequence copy failed:', seqErr?.message || seqErr);
+              } catch (seqErr: unknown) {
+                console.warn('[maintenance] sqlite_sequence copy failed:', getErrorMessage(seqErr));
               }
             }
 
-            try { mainDb.exec('PRAGMA foreign_keys = ON'); } catch(_) {}
+            try { mainDb.exec('PRAGMA foreign_keys = ON'); } catch { }
           })();
 
           // Detach source
-          try { mainDb.exec('DETACH DATABASE src'); } catch (e) { console.warn('[maintenance] detach failed:', e); }
+          try { mainDb.exec('DETACH DATABASE src'); } catch (e: unknown) { console.warn('[maintenance] detach failed:', getErrorMessage(e)); }
         } finally {
-          try { mainDb.close(); } catch (e) { /* ignore */ }
+          try { mainDb.close(); } catch { /* ignore */ }
         }
       } finally {
         // Remove temporary file
-        try { fs.unlinkSync(tmpPath); } catch (e) { /* ignore */ }
+        try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
       }
 
       // Re-init wrapper if needed
-      try { initDB(); } catch (initErr) { console.warn('initDB() after attach-restore failed:', initErr) }
+      try { 
+        initDB(); 
+      } catch (initErr: unknown) { 
+        console.warn('initDB() after attach-restore failed:', getErrorMessage(initErr)); 
+      }
 
       return NextResponse.json({ success: true, message: 'Database restored (via ATTACH+copy) successfully' });
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Restore (attach-copy) error:', e);
-      return NextResponse.json({ error: e.message }, { status: 500 });
+      return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 });
     }
   }
 
