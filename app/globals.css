@@ -783,19 +783,12 @@ body {
 
 @media print {
   @page {
-    size: 58mm auto;
     margin: 0;
   }
 
   html, body {
-    width: 58mm !important;
-    min-height: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
     background: #fff !important;
     color: #000 !important;
-    font-size: 11px !important;
-    font-family: 'Courier New', monospace !important;
   }
 
   .app-container > nav,

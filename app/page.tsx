@@ -36,12 +36,23 @@ export default function DashboardPage() {
   const nowMs = Date.now()
   const batasMs = (settings.batas_menunggak_hari || 30) * 86400000
 
-  const menunggakCount = customers.filter((c: any) => {
+  const isMacet = (c: any) => {
     if (c.status === 'BLACKLIST') return false
     if (c.total_hutang <= 0) return false
-    const unpaidTxs = transactions.filter((t: any) => t.customer_id === c.id && t.status !== 'LUNAS')
-    return unpaidTxs.some((t: any) => (nowMs - t.tanggal) > batasMs)
-  }).length
+    
+    const custPayments = payments.filter((p: any) => p.customer_id === c.id)
+    if (custPayments.length > 0) {
+      const lastPaymentTime = Math.max(...custPayments.map((p: any) => p.tanggal_bayar))
+      return (nowMs - lastPaymentTime) > batasMs
+    } else {
+      const unpaidTxs = transactions.filter((t: any) => t.customer_id === c.id && t.status !== 'LUNAS')
+      if (unpaidTxs.length === 0) return false
+      const oldestTxTime = Math.min(...unpaidTxs.map((t: any) => t.tanggal))
+      return (nowMs - oldestTxTime) > batasMs
+    }
+  }
+
+  const menunggakCount = customers.filter(isMacet).length
 
   const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const blacklistCount = customers.filter((c: any) => c.status === 'BLACKLIST').length

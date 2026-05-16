@@ -27,6 +27,9 @@ export default function LaporanPage() {
 
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [searchRekap, setSearchRekap] = useState('')
+  const [printCustomerId, setPrintCustomerId] = useState<string | null>(null)
+  const [showAllCustomerTable, setShowAllCustomerTable] = useState(false)
 
   if (user?.role !== 'ADMIN' && user?.role !== 'SUPERADMIN') {
     return (
@@ -80,6 +83,12 @@ export default function LaporanPage() {
   const totalPenjualanBarang = filteredItems.reduce((s, i) => s + i.subtotal, 0)
   const totalBonBaru = filteredTxs.reduce((s, t) => s + t.total_harga, 0)
 
+  const getOldestUnpaidTxDate = (customerId: string) => {
+    const custTxs = transactions.filter(t => t.customer_id === customerId && t.status !== 'LUNAS')
+    if (custTxs.length === 0) return null
+    return new Date(Math.min(...custTxs.map(t => t.tanggal)))
+  }
+
   const getLastPaymentDate = (customerId: string) => {
     const custPayments = payments.filter(p => p.customer_id === customerId)
     if (custPayments.length === 0) return null
@@ -88,8 +97,12 @@ export default function LaporanPage() {
 
   const kreditMacet = tunggakan.filter(c => {
     const lastPayment = getLastPaymentDate(c.id)
-    const late = lastPayment ? daysSince(lastPayment) : 999
-    return late >= batasMacet
+    if (lastPayment) {
+      return daysSince(lastPayment) >= batasMacet
+    } else {
+      const oldestTx = getOldestUnpaidTxDate(c.id)
+      return oldestTx ? daysSince(oldestTx) >= batasMacet : false
+    }
   })
 
   const handlePrintCustomerRecap = () => {
@@ -151,14 +164,15 @@ export default function LaporanPage() {
   if (loading) return <div style={{ textAlign: 'center', padding: '60px' }}>Memuat laporan...</div>
 
   return (
-    <div>
-      <div style={{ background: 'linear-gradient(135deg, #2C3E50 0%, #1a252f 100%)', padding: '20px', color: 'white' }}>
+    <>
+    <div className={printCustomerId ? 'no-print' : ''}>
+      <div className="no-print" style={{ background: 'linear-gradient(135deg, #2C3E50 0%, #1a252f 100%)', padding: '20px', color: 'white' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 800 }}>📊 Laporan & Analitik</h1>
         <p style={{ fontSize: '14px', opacity: 0.85, marginTop: '2px' }}>Data real-time kondisi keuangan toko</p>
       </div>
 
       {/* Tabs */}
-      <div style={{ background: 'var(--white)', borderBottom: '1px solid var(--border)', display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div className="no-print" style={{ background: 'var(--white)', borderBottom: '1px solid var(--border)', display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {([
           ['dashboard', '📈 Dashboard'],
           ['riwayat', '📋 Riwayat'],
@@ -181,7 +195,7 @@ export default function LaporanPage() {
       </div>
 
       {/* Filter Tanggal */}
-      <div style={{ padding: '16px 16px 0 16px' }}>
+      <div className="no-print" style={{ padding: '16px 16px 0 16px' }}>
         <div className="card" style={{ padding: '12px 16px', display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--bg)' }}>
           <div style={{ flex: 1 }}>
             <label style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Dari Tanggal</label>
@@ -309,7 +323,15 @@ export default function LaporanPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {kreditMacet.map(c => {
                     const lastPayment = getLastPaymentDate(c.id)
-                    const late = lastPayment ? daysSince(lastPayment) : 999
+                    const oldestTx = getOldestUnpaidTxDate(c.id)
+                    let lateText = ''
+                    if (lastPayment) {
+                      lateText = `Telat ${daysSince(lastPayment)} Hari`
+                    } else if (oldestTx) {
+                      lateText = `Telat ${daysSince(oldestTx)} Hari`
+                    } else {
+                      lateText = 'Belum Pernah Bayar'
+                    }
                     return (
                       <Link key={c.id} href={`/pelanggan/${c.id}`} className="card" style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -318,7 +340,7 @@ export default function LaporanPage() {
                         <div>
                           <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-main)' }}>{c.nama}</p>
                           <p style={{ fontSize: '13px', color: 'var(--danger)', fontWeight: 600, marginTop: '2px' }}>
-                            {lastPayment ? `Telat ${late} Hari` : 'Belum Pernah Bayar'}
+                            {lateText}
                           </p>
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -424,8 +446,23 @@ export default function LaporanPage() {
             </div>
             {tunggakan.map(c => {
               const lastPayment = getLastPaymentDate(c.id)
-              const daysLate = lastPayment ? daysSince(lastPayment) : 999
+              const oldestTx = getOldestUnpaidTxDate(c.id)
+              
+              let daysLate = 0
+              if (lastPayment) daysLate = daysSince(lastPayment)
+              else if (oldestTx) daysLate = daysSince(oldestTx)
+
               const isAlert = daysLate > batasMacet
+              
+              let lateText = ''
+              if (lastPayment) {
+                lateText = isAlert ? `🔴 Belum bayar ${daysLate} hari!` : `✅ ${daysLate} hari lalu bayar`
+              } else if (oldestTx) {
+                lateText = isAlert ? `🔴 Tunggakan ${daysLate} hari!` : `✅ Baru berhutang ${daysLate} hari`
+              } else {
+                lateText = 'Belum pernah bayar'
+              }
+
               return (
                 <Link key={c.id} href={`/pelanggan/${c.id}`} className="card" style={{
                   display: 'block', textDecoration: 'none',
@@ -440,7 +477,7 @@ export default function LaporanPage() {
                       </div>
                       <p style={{ fontSize: '14px', color: 'var(--text-sub)', marginTop: '2px' }}>{c.alamat || '-'}</p>
                       <p style={{ fontSize: '14px', fontWeight: 600, marginTop: '6px', color: isAlert ? 'var(--danger)' : 'var(--text-muted)' }}>
-                        {lastPayment ? (isAlert ? `🔴 Belum bayar ${daysLate} hari!` : `✅ ${daysLate} hari lalu bayar`) : 'Belum pernah bayar'}
+                        {lateText}
                       </p>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
@@ -493,7 +530,7 @@ export default function LaporanPage() {
         {/* PELANGGAN RECAPITULATION TAB */}
         {activeTab === 'pelanggan' && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+            <div className={printCustomerId ? 'no-print' : ''} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px' }}>
               <div className="card" style={{ padding: '16px', background: 'var(--primary-light)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
                 <p style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 700 }}>👥 Total Pelanggan</p>
                 <p style={{ fontSize: '28px', fontWeight: 800, color: 'var(--primary)', marginTop: '4px' }}>{customers.length}</p>
@@ -508,7 +545,7 @@ export default function LaporanPage() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+            <div className={printCustomerId ? 'no-print' : ''} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
               <div>
                 <p className="section-label" style={{ marginBottom: '12px' }}>🏆 Top 5 Pembeli Terbanyak</p>
                 {topBuyers.slice(0, 5).map((c, idx) => (
@@ -544,24 +581,36 @@ export default function LaporanPage() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '24px' }}>
-              <div>
-                <p className="section-label" style={{ marginBottom: '8px' }}>📇 Kartu Rekapan Kredit per Pelanggan</p>
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '640px' }}>
-                  Ringkasan kredit setiap pelanggan agar laporan tetap mudah dibaca meskipun data pelanggan banyak.
-                </p>
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                <div>
+                  <p className="section-label" style={{ marginBottom: '8px' }}>📇 Kartu Rekapan Kredit per Pelanggan</p>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '640px' }} className="no-print">
+                    Ringkasan kredit setiap pelanggan agar laporan tetap mudah dibaca meskipun data pelanggan banyak.
+                  </p>
+                </div>
+                <button onClick={handlePrintCustomerRecap} className="btn btn-primary no-print" style={{ minWidth: '190px' }}>
+                  🖨️ Cetak Rekap Semua
+                </button>
               </div>
-              <button onClick={handlePrintCustomerRecap} className="btn btn-primary no-print" style={{ minWidth: '190px' }}>
-                🖨️ Cetak Rekap Semua
-              </button>
+              <input
+                type="text"
+                className="form-input no-print"
+                placeholder="🔍 Cari nama pelanggan untuk dicetak..."
+                value={searchRekap}
+                onChange={e => setSearchRekap(e.target.value)}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--white)' }}
+              />
             </div>
 
             <div className="print-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-              {sortedCustomerMetrics.map(c => {
-                const lastPayment = getLastPaymentDate(c.id)
-                return (
-                  <div key={c.id} className="card print-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '220px' }}>
-                    <div>
+              {sortedCustomerMetrics
+                .filter(c => c.nama.toLowerCase().includes(searchRekap.toLowerCase()))
+                .map(c => {
+                 const lastPayment = getLastPaymentDate(c.id)
+                 return (
+                   <div key={c.id} className={`card print-card ${printCustomerId && printCustomerId !== c.id ? 'no-print' : ''}`} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '220px' }}>
+                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
                         <div>
                           <p style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>{c.nama}</p>
@@ -600,13 +649,32 @@ export default function LaporanPage() {
                         </p>
                       )}
                     </div>
+
+                    <button
+                      onClick={() => setPrintCustomerId(c.id)}
+                      className="btn btn-outline btn-full no-print"
+                      style={{ marginTop: '12px', padding: '12px', fontSize: '15px' }}
+                    >
+                      🖨️ Histori & Cetak
+                    </button>
                   </div>
                 )
               })}
             </div>
 
-            <p className="section-label">📋 Rekapitulasi Semua Pelanggan</p>
-            <div style={{ overflowX: 'auto' }}>
+            <div className={printCustomerId ? 'no-print' : ''} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', marginTop: '32px' }}>
+              <p className="section-label" style={{ margin: 0 }}>📋 Tabel Rekapitulasi Pelanggan</p>
+              <button 
+                onClick={() => setShowAllCustomerTable(!showAllCustomerTable)}
+                className="btn btn-outline no-print"
+                style={{ fontSize: '14px', padding: '8px 16px' }}
+              >
+                {showAllCustomerTable ? 'Sembunyikan Tabel' : 'Lihat Bentuk Tabel'}
+              </button>
+            </div>
+
+            {showAllCustomerTable && (
+              <div className={printCustomerId ? 'no-print' : ''} style={{ overflowX: 'auto', marginBottom: '32px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
@@ -638,9 +706,198 @@ export default function LaporanPage() {
                   </tbody>
                 </table>
               </div>
+            )}
           </>
         )}
       </div>
     </div>
+
+    {/* PRINT MODAL */}
+    {printCustomerId && (() => {
+      const c = customers.find(x => x.id === printCustomerId)
+      if (!c) return null
+      const cTx = transactions.filter(t => t.customer_id === c.id).sort((a,b) => b.tanggal - a.tanggal)
+      const cPay = payments.filter(p => p.customer_id === c.id).sort((a,b) => b.tanggal_bayar - a.tanggal_bayar)
+      const totalBeli = cTx.reduce((s,t) => s + t.total_harga, 0)
+      const totalBayar = cPay.reduce((s,p) => s + p.nominal_bayar, 0)
+      const totalHutang = totalBeli - totalBayar
+
+      return (
+        <div className="print-modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '20px', overflowY: 'auto' }}>
+          <style>{`
+            @media print {
+              body { overflow: auto !important; margin: 0 !important; }
+              .print-modal-overlay {
+                position: static !important;
+                display: block !important;
+                background: none !important;
+                padding: 0 !important;
+              }
+              .modal-screen {
+                display: none !important;
+              }
+              .print-thermal-receipt {
+                display: block !important;
+              }
+            }
+            @media screen {
+              .print-thermal-receipt {
+                display: none !important;
+              }
+            }
+          `}</style>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '900px', margin: '20px auto', display: 'flex', justifyContent: 'center' }}>
+            
+            {/* --- TAMPILAN LAYAR (Akan disembunyikan saat di-print) --- */}
+            <div className="card modal-screen" style={{ background: 'white', width: '100%', borderRadius: '16px', display: 'flex', flexDirection: 'column' }}>
+              <div className="no-print" style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 10, borderRadius: '16px 16px 0 0' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: 800 }}>Detail Histori Pelanggan</h2>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button onClick={() => setPrintCustomerId(null)} className="btn btn-outline" style={{ padding: '12px 24px', fontSize: '16px' }}>Batal</button>
+                  <button onClick={() => window.print()} className="btn btn-primary" style={{ padding: '12px 32px', fontSize: '18px' }}>
+                    🖨️ CETAK SEKARANG
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ padding: '40px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                  <h1 style={{ fontSize: '28px', fontWeight: 800 }}>HISTORI KREDIT PELANGGAN</h1>
+                  <p style={{ fontSize: '16px', color: 'var(--text-sub)', marginTop: '4px' }}>{settings.nama_toko || 'Toko'}</p>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', padding: '20px', background: 'var(--bg)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <div>
+                    <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '4px' }}>Informasi Pelanggan</p>
+                    <p style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)' }}>{c.nama}</p>
+                    <p style={{ fontSize: '15px', color: 'var(--text-sub)', marginTop: '4px' }}>📞 {c.no_hp || '-'}</p>
+                    <p style={{ fontSize: '15px', color: 'var(--text-sub)' }}>📍 {c.alamat || '-'}</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '4px' }}>Total Sisa Hutang</p>
+                    <p style={{ fontSize: '32px', fontWeight: 800, color: totalHutang > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                      {formatRupiah(totalHutang)}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                  <div>
+                    <p style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', borderBottom: '2px solid var(--border)', paddingBottom: '12px', color: 'var(--primary)' }}>🛒 Histori Belanja</p>
+                    {cTx.length === 0 ? <p style={{ fontSize: '15px', color: 'var(--text-muted)' }}>Belum ada histori transaksi belanja.</p> : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700 }}>Tanggal</th>
+                            <th style={{ padding: '12px', textAlign: 'right', fontWeight: 700 }}>Nominal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cTx.map(t => (
+                            <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '12px' }}>{formatDateTime(t.tanggal)}</td>
+                              <td style={{ padding: '12px', textAlign: 'right', fontWeight: 700 }}>{formatRupiah(t.total_harga)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td style={{ padding: '16px 12px', fontWeight: 800, fontSize: '16px' }}>TOTAL BELANJA</td>
+                            <td style={{ padding: '16px 12px', textAlign: 'right', fontWeight: 800, fontSize: '16px', color: 'var(--primary)' }}>{formatRupiah(totalBeli)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    )}
+                  </div>
+
+                  <div>
+                    <p style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', borderBottom: '2px solid var(--border)', paddingBottom: '12px', color: 'var(--success)' }}>💰 Histori Pembayaran</p>
+                    {cPay.length === 0 ? <p style={{ fontSize: '15px', color: 'var(--text-muted)' }}>Belum ada histori pembayaran.</p> : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--border)' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700 }}>Tanggal</th>
+                            <th style={{ padding: '12px', textAlign: 'right', fontWeight: 700 }}>Nominal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cPay.map(p => (
+                            <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '12px' }}>{formatDateTime(p.tanggal_bayar)}</td>
+                              <td style={{ padding: '12px', textAlign: 'right', fontWeight: 700, color: 'var(--success)' }}>{formatRupiah(p.nominal_bayar)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td style={{ padding: '16px 12px', fontWeight: 800, fontSize: '16px' }}>TOTAL BAYAR</td>
+                            <td style={{ padding: '16px 12px', textAlign: 'right', fontWeight: 800, fontSize: '16px', color: 'var(--success)' }}>{formatRupiah(totalBayar)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* --- TAMPILAN CETAK THERMAL 58MM (Disembunyikan di layar, hanya muncul saat di-print) --- */}
+            <div className="receipt print-thermal-receipt">
+               <div className="receipt__header">
+                  <div className="receipt__store-name">{settings.nama_toko || 'Toko'}</div>
+                  <div className="receipt__store-meta">HISTORI KREDIT</div>
+               </div>
+               <hr/>
+               <div className="receipt__row">
+                  <span className="receipt__label">Nama:</span>
+                  <span className="receipt__value">{c.nama}</span>
+               </div>
+               <div className="receipt__row">
+                  <span className="receipt__label">Sisa Hutang:</span>
+                  <span className="receipt__value">{formatRupiah(totalHutang)}</span>
+               </div>
+               
+               <hr/>
+               <div className="receipt__title" style={{ textAlign: 'center', marginTop: '8px' }}>HISTORI BELANJA</div>
+               {cTx.length === 0 ? <div style={{ fontSize: '11px', textAlign: 'center' }}>-</div> : 
+                 cTx.map(t => (
+                   <div key={t.id} className="receipt__row">
+                     <span className="receipt__label">{formatDate(t.tanggal)}</span>
+                     <span className="receipt__value">{formatRupiah(t.total_harga)}</span>
+                   </div>
+                 ))
+               }
+               <div className="receipt__row" style={{ marginTop: '8px', borderTop: '1px solid #000', paddingTop: '4px' }}>
+                 <span className="receipt__label">TOTAL:</span>
+                 <span className="receipt__value">{formatRupiah(totalBeli)}</span>
+               </div>
+               
+               <hr/>
+               <div className="receipt__title" style={{ textAlign: 'center', marginTop: '8px' }}>HISTORI PEMBAYARAN</div>
+               {cPay.length === 0 ? <div style={{ fontSize: '11px', textAlign: 'center' }}>-</div> : 
+                 cPay.map(p => (
+                   <div key={p.id} className="receipt__row">
+                     <span className="receipt__label">{formatDate(p.tanggal_bayar)}</span>
+                     <span className="receipt__value">{formatRupiah(p.nominal_bayar)}</span>
+                   </div>
+                 ))
+               }
+               <div className="receipt__row" style={{ marginTop: '8px', borderTop: '1px solid #000', paddingTop: '4px' }}>
+                 <span className="receipt__label">TOTAL:</span>
+                 <span className="receipt__value">{formatRupiah(totalBayar)}</span>
+               </div>
+
+               <hr/>
+               <div style={{ textAlign: 'center', fontSize: '10px', marginTop: '12px' }}>
+                 Dicetak pada {formatDateTime(Date.now())}
+               </div>
+            </div>
+
+          </div>
+        </div>
+      )
+    })()}
+    </>
   )
 }
