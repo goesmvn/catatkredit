@@ -109,7 +109,7 @@ function PembayaranForm() {
 
   return (
     <div>
-      <div style={{
+      <div className="no-print" style={{
         background: 'linear-gradient(135deg, var(--success) 0%, #155f38 100%)',
         padding: '20px', color: 'white',
       }}>
@@ -128,7 +128,7 @@ function PembayaranForm() {
       </div>
 
       {saved && (
-        <div className="toast-container">
+        <div className="toast-container no-print">
           <div className="toast toast-success">
             {isLunas ? '🎉 LUNAS! Pembayaran berhasil disimpan' : '✅ Pembayaran berhasil disimpan'}
           </div>
@@ -203,7 +203,7 @@ function PembayaranForm() {
         ) : (
           <>
             {/* Selected customer display */}
-            <div className="card-elevated" style={{ textAlign: 'center' }}>
+            <div className="card-elevated no-print" style={{ textAlign: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div className="list-item__avatar" style={{ width: 48, height: 48, fontSize: '20px' }}>{customer?.nama.charAt(0)}</div>

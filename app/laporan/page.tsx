@@ -10,6 +10,8 @@ type Tab = 'dashboard' | 'tunggakan' | 'blacklist' | 'riwayat' | 'barang' | 'pel
 
 export default function LaporanPage() {
   const { user } = useAuth()
+  const settings = useSettings()
+  const batasMacet = settings.batas_menunggak_hari || 30
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [customers, setCustomers] = useState<any[]>([])
   const [payments, setPayments] = useState<any[]>([])
@@ -97,8 +99,6 @@ export default function LaporanPage() {
     return new Date(Math.max(...custPayments.map(p => p.tanggal_bayar)))
   }
 
-  const settings = useSettings()
-  const batasMacet = settings.batas_menunggak_hari || 30
   const kreditMacet = tunggakan.filter(c => {
     const lastPayment = getLastPaymentDate(c.id)
     const late = lastPayment ? daysSince(lastPayment) : 999

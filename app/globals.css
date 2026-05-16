@@ -780,21 +780,22 @@ body {
 .mt-2  { margin-top: var(--s2); }
 .mt-4  { margin-top: var(--s4); }
 .mt-6  { margin-top: var(--s6); }
-.no-print { display: inline-flex; }
 
 @media print {
   @page {
-    size: landscape;
-    margin: 16mm;
+    size: 58mm auto;
+    margin: 0;
   }
 
   html, body {
-    width: auto !important;
+    width: 58mm !important;
     min-height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
     color: #000 !important;
+    font-size: 11px !important;
+    font-family: 'Courier New', monospace !important;
   }
 
   .app-container > nav,
@@ -803,15 +804,19 @@ body {
   .no-print,
   .overlay,
   .modal-sheet,
-  .modal-handle {
+  .modal-handle,
+  .page-header {
     display: none !important;
   }
 
   main,
   .main-content,
-  .page-body {
+  .page-body,
+  .app-container {
     width: 100% !important;
     max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
     padding: 0 !important;
     margin: 0 !important;
   }
@@ -920,6 +925,22 @@ body {
   font-size: 14px;
   line-height: 1.45;
   color: var(--text-main);
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+@media print {
+  .receipt {
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    width: 58mm !important;
+    max-width: 58mm !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+  }
 }
 
 .receipt__header {
@@ -928,11 +949,23 @@ body {
 }
 
 .receipt__store-name { font-weight: 800; font-size: 18px; letter-spacing: -0.01em; margin-bottom: var(--s1); }
+@media print { .receipt__store-name { font-size: 14px !important; margin-bottom: 2px !important; } }
+
 .receipt__store-meta { font-size: 13px; color: var(--text-sub); margin-bottom: var(--s1); }
+@media print { .receipt__store-meta { font-size: 10px !important; margin-bottom: 2px !important; color: #000 !important; } }
+
 .receipt__title { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; margin: var(--s2) 0; color: var(--text-sub); }
+@media print { .receipt__title { font-size: 11px !important; margin: 4px 0 !important; color: #000 !important; } }
+
 .receipt__row { display:flex; justify-content: space-between; gap: 12px; align-items:center; margin: 6px 0; font-size: 14px; }
+@media print { .receipt__row { font-size: 11px !important; gap: 4px !important; margin: 2px 0 !important; } }
+
 .receipt__label { color: var(--text-sub); font-weight:600; }
+@media print { .receipt__label { color: #000 !important; font-weight: normal !important; } }
+
 .receipt__value { font-weight:800; color: var(--text-main); text-align:right; min-width: 120px; }
+@media print { .receipt__value { color: #000 !important; font-weight: bold !important; min-width: auto !important; } }
+
 .receipt__callout {
   margin-top: var(--s3);
   font-size: 18px;
@@ -946,7 +979,23 @@ body {
   box-sizing: border-box;
 }
 
+@media print {
+  .receipt__callout {
+    font-size: 12px !important;
+    background: none !important;
+    padding: 4px 0 !important;
+    border: none !important;
+    border-top: 1px dashed #000 !important;
+    border-bottom: 1px dashed #000 !important;
+    border-radius: 0 !important;
+    color: #000 !important;
+    text-align: center;
+    margin-top: 8px !important;
+  }
+}
+
 .receipt hr { border: none; border-top: 1px dashed var(--border); margin: var(--s3) 0; }
+@media print { .receipt hr { border-top: 1px dashed #000 !important; margin: 4px 0 !important; } }
 
 /* ---- Bottom tab indicator ---- */
 .tab-indicator {

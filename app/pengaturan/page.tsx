@@ -248,7 +248,7 @@ export default function PengaturanPage() {
         <div className="form-group">
           <label className="form-label">Batas Hari Menunggak</label>
           <p className="form-hint">
-            Pelanggan akan ditandai "Menunggak" jika belum membayar lewat dari jumlah hari ini.
+            Pelanggan akan ditandai &quot;Menunggak&quot; jika belum membayar lewat dari jumlah hari ini.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <input 

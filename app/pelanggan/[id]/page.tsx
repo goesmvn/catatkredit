@@ -22,6 +22,7 @@ export default function PelangganDetailPage() {
   const [showDeleteCustomerModal, setShowDeleteCustomerModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
+  const settings = useSettings()
   const [showModal, setShowModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editForm, setEditForm] = useState({ nama: '', alamat: '', no_hp: '', ciri_ciri: '' })
@@ -30,6 +31,10 @@ export default function PelangganDetailPage() {
   const [editTxForm, setEditTxForm] = useState({ id: '', total_harga: 0, status: '' })
   const [showAllTransactions, setShowAllTransactions] = useState(false)
   const [showAllPayments, setShowAllPayments] = useState(false)
+
+  const [showEditPaymentModal, setShowEditPaymentModal] = useState(false)
+  const [editPaymentForm, setEditPaymentForm] = useState({ id: '', nominal_bayar: 0 })
+  const [printPayment, setPrintPayment] = useState<any>(null)
 
   const fetchData = useCallback(async () => {
     if (!id) return
@@ -68,7 +73,6 @@ export default function PelangganDetailPage() {
     </div>
   )
 
-  const settings = useSettings()
   const nowMs = Date.now()
   const batasMs = (settings.batas_menunggak_hari || 30) * 86400000
   const isBlacklisted = customer.status === 'BLACKLIST'
@@ -113,6 +117,50 @@ export default function PelangganDetailPage() {
   const handleEditTxClick = (tx: any) => {
     setEditTxForm({ id: tx.id, total_harga: tx.total_harga, status: tx.status })
     setShowEditTxModal(true)
+  }
+
+  const handleEditPaymentClick = (payment: any) => {
+    setEditPaymentForm({ id: payment.id, nominal_bayar: payment.nominal_bayar })
+    setShowEditPaymentModal(true)
+  }
+
+  const handleSaveEditPayment = async () => {
+    try {
+      const res = await fetch(`/api/payments/${editPaymentForm.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nominal_bayar: editPaymentForm.nominal_bayar })
+      })
+      if (!res.ok) throw new Error('Gagal mengupdate')
+      setShowEditPaymentModal(false)
+      fetchData()
+    } catch (e) {
+      console.error(e)
+      alert('Terjadi kesalahan saat mengupdate pembayaran')
+    }
+  }
+
+  const handleDeletePayment = async (paymentId: string, nominal: number) => {
+    if (!window.confirm(`Hapus pembayaran senilai ${formatRupiah(nominal)}? Saldo hutang pelanggan akan otomatis bertambah kembali.`)) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/payments/${paymentId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Gagal menghapus')
+      fetchData()
+    } catch (e) {
+      console.error(e)
+      alert('Terjadi kesalahan saat menghapus pembayaran')
+    }
+  }
+
+  const handleReprintClick = (payment: any) => {
+    setPrintPayment(payment)
+    setTimeout(() => {
+      window.print?.()
+      setTimeout(() => setPrintPayment(null), 600)
+    }, 100)
   }
 
   const handleSaveEditTx = async () => {
@@ -163,7 +211,7 @@ export default function PelangganDetailPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{
+      <div className="no-print" style={{
         background: isBlacklisted
           ? 'linear-gradient(135deg, var(--danger) 0%, #a93226 100%)'
           : 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
@@ -198,6 +246,34 @@ export default function PelangganDetailPage() {
       </div>
 
       <div className="page-body">
+        {printPayment && (
+          <div className="receipt">
+            <div className="receipt__header">
+              <div className="receipt__store-name">{settings.nama_toko}</div>
+              <div className="receipt__store-meta">{settings.alamat_toko}</div>
+              <div className="receipt__store-meta">Telp: {settings.no_telepon}</div>
+              <hr />
+              <div className="receipt__title">BUKTI PEMBAYARAN CICILAN</div>
+              <div className="receipt__store-meta">
+                {new Date(printPayment.tanggal_bayar).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} — {new Date(printPayment.tanggal_bayar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+            <hr />
+            <div className="receipt__body">
+              <div className="receipt__row"><div className="receipt__label">Pelanggan</div><div className="receipt__value">{customer?.nama}</div></div>
+              <div className="receipt__row"><div className="receipt__label">Sebelum</div><div className="receipt__value">{formatRupiah(printPayment.sisa_hutang + printPayment.nominal_bayar)}</div></div>
+              <div className="receipt__row"><div className="receipt__label">Bayar</div><div className="receipt__value">{formatRupiah(printPayment.nominal_bayar)}</div></div>
+              <div className="receipt__callout">Sisa : {printPayment.sisa_hutang <= 0 ? 'LUNAS' : formatRupiah(printPayment.sisa_hutang)}</div>
+            </div>
+            <hr />
+            <div style={{ textAlign: 'center', marginTop: '10px' }}>
+              <p style={{ fontSize: '13px' }}>{printPayment.sisa_hutang <= 0 ? '🎉 Terima kasih! Hutang Anda sudah LUNAS!' : `Terima kasih! Sisa hutang Anda ${formatRupiah(printPayment.sisa_hutang)}`}</p>
+            </div>
+            <hr style={{ margin: '12px 0' }} />
+            <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
+          </div>
+        )}
+        <div className={printPayment ? 'no-print' : ''}>
         {isBlacklisted && (
           <div className="blacklist-banner">
             <span style={{ fontSize: '24px' }}>🚫</span>
@@ -460,6 +536,7 @@ export default function PelangganDetailPage() {
                     <th style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>Nominal</th>
                     <th style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>Sisa Hutang</th>
                     <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700 }}>Dibuat Oleh</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 700 }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -469,6 +546,13 @@ export default function PelangganDetailPage() {
                       <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700 }}>{formatRupiah(p.nominal_bayar)}</td>
                       <td style={{ padding: '12px 10px', textAlign: 'right' }}>{formatRupiah(p.sisa_hutang)}</td>
                       <td style={{ padding: '12px 10px', textAlign: 'center' }}>{p.created_by || '-'}</td>
+                      <td style={{ padding: '12px 10px', textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', gap: '8px' }}>
+                          <button onClick={() => handleReprintClick(p)} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }}>🖨️</button>
+                          <button onClick={() => handleEditPaymentClick(p)} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }}>✏️</button>
+                          <button onClick={() => handleDeletePayment(p.id, p.nominal_bayar)} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px', color: 'var(--danger)' }}>🗑️</button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -494,11 +578,17 @@ export default function PelangganDetailPage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <p style={{ fontSize: '18px', fontWeight: 800, color: 'var(--success)' }}>+{formatRupiah(p.nominal_bayar)}</p>
+                    <div style={{ display: 'inline-flex', gap: '8px', marginTop: '4px' }}>
+                      <button onClick={() => handleReprintClick(p)} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px', fontSize: '12px', minHeight: 'auto' }}>🖨️ Cetak</button>
+                      <button onClick={() => handleEditPaymentClick(p)} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px', fontSize: '12px', minHeight: 'auto' }}>✏️ Edit</button>
+                      <button onClick={() => handleDeletePayment(p.id, p.nominal_bayar)} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px', fontSize: '12px', minHeight: 'auto', color: 'var(--danger)' }}>🗑️ Hapus</button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
 
@@ -614,6 +704,40 @@ export default function PelangganDetailPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <button onClick={handleSaveEditTx} className="btn btn-primary btn-xl btn-full">Simpan Perubahan</button>
               <button onClick={() => setShowEditTxModal(false)} className="btn btn-ghost btn-xl btn-full">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT PEMBAYARAN */}
+      {showEditPaymentModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', zIndex: 100,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--white)', borderRadius: '24px', width: '100%', maxWidth: '400px',
+            padding: '32px 24px', textAlign: 'left', boxShadow: 'var(--shadow-xl)'
+          }}>
+            <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '24px' }}>✏️ Edit Pembayaran</h2>
+            <div style={{ display: 'grid', gap: '16px', marginBottom: '32px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-sub)', marginBottom: '8px' }}>Nominal Pembayaran (Rp)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={editPaymentForm.nominal_bayar === 0 ? '' : new Intl.NumberFormat('id-ID').format(editPaymentForm.nominal_bayar)}
+                  onChange={e => setEditPaymentForm(prev => ({ ...prev, nominal_bayar: parseInt(e.target.value.replace(/\D/g, ''), 10) || 0 }))}
+                  className="form-input"
+                  placeholder="Contoh: 150.000"
+                />
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>* Mengubah nominal akan memperbarui saldo hutang pelanggan otomatis.</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button onClick={handleSaveEditPayment} className="btn btn-primary btn-xl btn-full">Simpan Perubahan</button>
+              <button onClick={() => setShowEditPaymentModal(false)} className="btn btn-ghost btn-xl btn-full">Batal</button>
             </div>
           </div>
         </div>
