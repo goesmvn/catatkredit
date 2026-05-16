@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { formatRupiah, formatDate, formatDateTime, daysSince } from '@/lib/mockData'
 import { useSettings } from '@/lib/hooks/useSettings'
+import { useDataCache } from '@/lib/hooks/useDataCache'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 
@@ -13,33 +14,19 @@ export default function LaporanPage() {
   const settings = useSettings()
   const batasMacet = settings.batas_menunggak_hari || 30
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
-  const [customers, setCustomers] = useState<any[]>([])
-  const [payments, setPayments] = useState<any[]>([])
-  const [items, setItems] = useState<any[]>([])
-  const [transactions, setTransactions] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: cachedCustomers, loading: loadingCust } = useDataCache<any[]>('/api/customers')
+  const { data: cachedPayments, loading: loadingPay } = useDataCache<any[]>('/api/payments')
+  const { data: cachedTransactions, loading: loadingTx } = useDataCache<any[]>('/api/transactions')
+  const { data: cachedItems, loading: loadingItems } = useDataCache<any[]>('/api/transactions/items')
+
+  const customers = cachedCustomers || []
+  const payments = cachedPayments ? [...cachedPayments].sort((a: any, b: any) => b.tanggal_bayar - a.tanggal_bayar) : []
+  const transactions = cachedTransactions ? [...cachedTransactions].sort((a: any, b: any) => b.tanggal - a.tanggal) : []
+  const items = cachedItems || []
+  const loading = loadingCust || loadingPay || loadingTx || loadingItems
+
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/customers').then(r => r.json()),
-      fetch('/api/payments').then(r => r.json()),
-      fetch('/api/transactions').then(r => r.json()),
-    ]).then(([c, p, t]) => {
-      setCustomers(c)
-      setPayments(p.sort((a: any, b: any) => b.tanggal_bayar - a.tanggal_bayar))
-      setTransactions(t.sort((a: any, b: any) => b.tanggal - a.tanggal))
-      // Load items for each transaction
-      const allItems: any[] = []
-      t.forEach((tx: any) => {
-        // items are fetched on customer detail, but we also need them in laporan
-      })
-    }).catch(console.error).finally(() => setLoading(false))
-
-    // Fetch all transaction items via customers (comprehensive)
-    fetch('/api/transactions/items').then(r => r.ok ? r.json() : []).then(setItems).catch(() => setItems([]))
-  }, [])
 
   if (user?.role !== 'ADMIN' && user?.role !== 'SUPERADMIN') {
     return (

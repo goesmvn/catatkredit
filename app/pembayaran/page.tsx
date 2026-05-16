@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { formatRupiah } from '@/lib/mockData'
 import { useSettings } from '@/lib/hooks/useSettings'
 import { useAuth } from '@/lib/auth'
+import { useDataCache } from '@/lib/hooks/useDataCache'
 
 function PembayaranForm() {
   const router = useRouter()
@@ -12,10 +13,8 @@ function PembayaranForm() {
   const preSelectId = searchParams.get('pelanggan')
   const { user } = useAuth()
 
-  const [dbCustomers, setDbCustomers] = useState<any[]>([])
-  useEffect(() => {
-    fetch('/api/customers').then(r => r.json()).then(data => setDbCustomers(data)).catch(console.error)
-  }, [])
+  const { data: cachedCustomers, loading: isCustomersLoading, refetch: refetchCustomers } = useDataCache<any[]>('/api/customers')
+  const dbCustomers = cachedCustomers || []
 
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(preSelectId || '')
@@ -93,8 +92,7 @@ function PembayaranForm() {
       setShowReceipt(true)
       setShowSuccessModal(false)
       // Refresh customer data
-      const updatedList = await fetch('/api/customers').then(r => r.json())
-      setDbCustomers(updatedList)
+      await refetchCustomers()
     } catch (err) {
       console.error(err)
       alert('Gagal menyimpan pembayaran')

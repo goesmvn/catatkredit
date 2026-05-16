@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatRupiah, formatDate, formatDateTime } from '@/lib/mockData'
 import { useSettings } from '@/lib/hooks/useSettings'
+import { useDataCache } from '@/lib/hooks/useDataCache'
 import { notFound } from 'next/navigation'
 
 const daysSince = (d: number): number => Math.floor((Date.now() - d) / 86400000)
@@ -13,12 +14,14 @@ export default function PelangganDetailPage() {
   const params = useParams()
   const id = params.id as string
 
-  const [customer, setCustomer] = useState<any>(null)
-  const [txs, setTxs] = useState<any[]>([])
-  const [payments, setPayments] = useState<any[]>([])
-  const [items, setItems] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [fetchError, setFetchError] = useState(false)
+  const { data: cachedData, loading: isCacheLoading, refetch } = useDataCache<any>(id ? `/api/customers/${id}` : null)
+  
+  const customer = cachedData?.customer || null
+  const txs = cachedData?.transactions ? [...cachedData.transactions].sort((a: any, b: any) => b.tanggal - a.tanggal) : []
+  const payments = cachedData?.payments ? [...cachedData.payments].sort((a: any, b: any) => b.tanggal_bayar - a.tanggal_bayar) : []
+  const items = cachedData?.items || []
+  const loading = isCacheLoading && !customer
+  const fetchError = !isCacheLoading && !customer && cachedData !== undefined && cachedData !== null // naive check, in real app better handle 404
   const [showDeleteCustomerModal, setShowDeleteCustomerModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
@@ -36,30 +39,7 @@ export default function PelangganDetailPage() {
   const [editPaymentForm, setEditPaymentForm] = useState({ id: '', nominal_bayar: 0 })
   const [printPayment, setPrintPayment] = useState<any>(null)
 
-  const fetchData = useCallback(async () => {
-    if (!id) return
-    setFetchError(false)
-    try {
-      const res = await fetch(`/api/customers/${id}`)
-      if (!res.ok) {
-        if (res.status === 404) setFetchError(true)
-        setLoading(false)
-        return
-      }
-      const json = await res.json()
-      setCustomer(json.customer)
-      setTxs((json.transactions || []).sort((a: any, b: any) => b.tanggal - a.tanggal))
-      setPayments((json.payments || []).sort((a: any, b: any) => b.tanggal_bayar - a.tanggal_bayar))
-      setItems(json.items || [])
-    } catch (e) {
-      console.error(e)
-      setFetchError(true)
-    } finally {
-      setLoading(false)
-    }
-  }, [id])
-
-  useEffect(() => { fetchData() }, [fetchData])
+  const fetchData = refetch
 
   if (loading) return (
     <div style={{ padding: '40px', textAlign: 'center' }}>

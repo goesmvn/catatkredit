@@ -4,6 +4,8 @@ import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { formatRupiah } from '@/lib/mockData'
 import { useAuth } from '@/lib/auth'
+import { useDataCache } from '@/lib/hooks/useDataCache'
+import { useSettings } from '@/lib/hooks/useSettings'
 
 interface CartItem {
   id: string;
@@ -19,14 +21,11 @@ function BonBaruForm() {
   const preSelectId = searchParams.get('pelanggan')
   const { user } = useAuth()
 
-  const [dbCustomers, setDbCustomers] = useState<any[]>([])
-  const [dbItems, setDbItems] = useState<any[]>([])
+  const { data: cachedCustomers, loading: loadingCust, refetch: refetchCustomers } = useDataCache<any[]>('/api/customers')
+  const { data: cachedItems, loading: loadingItems, refetch: refetchItems } = useDataCache<any[]>('/api/items')
 
-  useEffect(() => {
-    Promise.all([fetch('/api/customers').then(r => r.json()), fetch('/api/items').then(r => r.json())])
-      .then(([customers, items]) => { setDbCustomers(customers); setDbItems(items) })
-      .catch(console.error)
-  }, [])
+  const dbCustomers = cachedCustomers || []
+  const dbItems = cachedItems || []
 
   const [selectedCustomerId, setSelectedCustomerId] = useState(preSelectId || '')
   const [search, setSearch] = useState('')
@@ -41,6 +40,10 @@ function BonBaruForm() {
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const savingRef = useRef(false)
   const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null)
+  
+  const settings = useSettings()
+  const [showReceipt, setShowReceipt] = useState(false)
+  const now = new Date()
 
   const selectedCustomer = dbCustomers.find(c => c.id === selectedCustomerId)
   const editingCartItem = cart.find(c => c.id === editingCartItemId)
@@ -78,8 +81,7 @@ function BonBaruForm() {
       body: JSON.stringify({ id, nama_barang: name.trim(), harga_default: 0 })
     })
     const newItem = await res.json()
-    const updatedItems = await fetch('/api/items').then(r => r.json())
-    setDbItems(updatedItems)
+    await refetchItems()
     addItemToCart({ id: newItem.id, nama_barang: newItem.nama_barang, harga_default: 0 })
   }
 
@@ -99,8 +101,7 @@ function BonBaruForm() {
       body: JSON.stringify({ id, ...newCustomerForm })
     })
     const newCustomer = await res.json()
-    const updatedCustomers = await fetch('/api/customers').then(r => r.json())
-    setDbCustomers(updatedCustomers)
+    await refetchCustomers()
     setSelectedCustomerId(newCustomer.id)
     setShowNewCustomerModal(false)
     setSearch('')
@@ -161,7 +162,7 @@ function BonBaruForm() {
       })
       if (!res.ok) throw new Error('Gagal menyimpan')
       setSaved(true)
-      setTimeout(() => router.push(`/pelanggan/${selectedCustomerId}`), 1800)
+      setShowReceipt(true)
     } catch (error) {
       console.error(error)
       alert('Terjadi kesalahan saat menyimpan kredit')
@@ -174,7 +175,7 @@ function BonBaruForm() {
   return (
     <div className="kasir-content-wrapper">
       {/* HEADER KOMPAK */}
-      <div className="page-header" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="page-header no-print" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button onClick={() => router.back()} style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: 'rgba(255,255,255,0.2)', color: 'white',
@@ -192,7 +193,7 @@ function BonBaruForm() {
       </div>
 
       {saved && (
-        <div className="toast-container">
+        <div className="toast-container no-print">
           <div className="toast toast-success" style={{ justifyContent: 'center' }}>
             <span>✅</span> Kredit berhasil disimpan!
           </div>
@@ -200,7 +201,9 @@ function BonBaruForm() {
       )}
 
       <div className="page-body">
-        {/* Step 1: Pilih Pelanggan */}
+        {!showReceipt ? (
+          <>
+            {/* Step 1: Pilih Pelanggan */}
         <div className="card-elevated" style={{ border: 'none', background: 'var(--white)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '14px' }}>1</div>
@@ -379,37 +382,101 @@ function BonBaruForm() {
             </div>
           )}
         </div>
+        </>
+        ) : (
+          /* Struk */
+          <div>
+            <div className="receipt">
+              <div className="receipt__header">
+                <div className="receipt__store-name">{settings.nama_toko}</div>
+                <div className="receipt__store-meta">{settings.alamat_toko}</div>
+                <div className="receipt__store-meta">Telp: {settings.no_telepon}</div>
+                <hr />
+                <div className="receipt__title">BUKTI KREDIT BARANG</div>
+                <div className="receipt__store-meta">{now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} — {now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
+              </div>
+              <hr />
+              <div className="receipt__body">
+                <div className="receipt__row"><div className="receipt__label">Pelanggan</div><div className="receipt__value">{selectedCustomer?.nama}</div></div>
+                <div className="receipt__row" style={{ marginTop: '8px' }}><div className="receipt__label">Rincian Barang:</div><div className="receipt__value"></div></div>
+                {cart.map((item, idx) => (
+                  <div key={idx} style={{ paddingLeft: '8px', fontSize: '14px', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{item.nama_barang}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-sub)' }}>
+                      <span>{item.qty} x {formatRupiah(item.harga_satuan)}</span>
+                      <span>{formatRupiah(item.subtotal)}</span>
+                    </div>
+                  </div>
+                ))}
+                <hr style={{ margin: '8px 0', borderStyle: 'dashed' }} />
+                <div className="receipt__row" style={{ fontWeight: 800, fontSize: '16px' }}><div className="receipt__label">Total Tagihan</div><div className="receipt__value">{formatRupiah(grandTotal)}</div></div>
+              </div>
+              <hr />
+              <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                <p style={{ fontSize: '13px' }}>Harap simpan struk ini sebagai bukti pengambilan barang kredit.</p>
+              </div>
+              <hr style={{ margin: '12px 0' }} />
+              <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
+            </div>
+            <button
+              onClick={() => {
+                try {
+                  window.print?.()
+                } catch (e) {
+                  console.error('Print failed', e)
+                } finally {
+                  setTimeout(() => router.push(`/pelanggan/${selectedCustomerId}`), 600)
+                }
+              }}
+              className="btn btn-primary btn-xl btn-full no-print"
+              style={{ marginTop: '12px' }}
+            >
+              🖨️ Cetak Struk
+            </button>
+            <button
+              onClick={() => router.push(`/pelanggan/${selectedCustomerId}`)}
+              className="btn btn-ghost btn-lg btn-full no-print"
+              style={{ marginTop: '8px' }}
+            >
+              Selesai (Kembali ke Profil)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Floating Bottom Bar */}
-      <div className="kasir-bottom-bar">
-        <div className="kasir-bottom-bar__inner">
-          <div>
-            <p style={{ fontSize: '11px', color: 'var(--text-sub)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Tagihan</p>
-            <p style={{ fontSize: '20px', fontWeight: 900, color: 'var(--primary)', lineHeight: 1.1, marginTop: '2px' }}>
-              {formatRupiah(grandTotal)}
-            </p>
+      {!showReceipt && (
+        <div className="kasir-bottom-bar no-print">
+          <div className="kasir-bottom-bar__inner">
+            <div>
+              <p style={{ fontSize: '11px', color: 'var(--text-sub)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Tagihan</p>
+              <p style={{ fontSize: '20px', fontWeight: 900, color: 'var(--primary)', lineHeight: 1.1, marginTop: '2px' }}>
+                {formatRupiah(grandTotal)}
+              </p>
+            </div>
+            <button 
+              onClick={handleSave} 
+              className={`btn btn-primary ${isSaving ? 'btn-loading' : ''}`}
+              disabled={isSaving || showConfirmModal || grandTotal === 0 || !selectedCustomerId}
+              style={{
+                padding: '10px 20px', borderRadius: '50px', fontSize: '15px', fontWeight: 700,
+                boxShadow: '0 4px 12px rgba(27,108,168,0.25)',
+                opacity: (grandTotal > 0 && selectedCustomerId && !isSaving) ? 1 : 0.6,
+                cursor: isSaving ? 'not-allowed' : 'pointer',
+                height: 'auto', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
+              }}>
+              {isSaving ? (
+                <>
+                  <span className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.7)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
+                  Menyimpan...
+                </>
+              ) : 'Simpan Kredit'}
+            </button>
           </div>
-          <button 
-            onClick={handleSave} 
-            className={`btn btn-primary ${isSaving ? 'btn-loading' : ''}`}
-            disabled={isSaving || showConfirmModal || grandTotal === 0 || !selectedCustomerId}
-            style={{
-              padding: '10px 20px', borderRadius: '50px', fontSize: '15px', fontWeight: 700,
-              boxShadow: '0 4px 12px rgba(27,108,168,0.25)',
-              opacity: (grandTotal > 0 && selectedCustomerId && !isSaving) ? 1 : 0.6,
-              cursor: isSaving ? 'not-allowed' : 'pointer',
-              height: 'auto', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
-            }}>
-            {isSaving ? (
-              <>
-                <span className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.7)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block' }} />
-                Menyimpan...
-              </>
-            ) : 'Simpan Kredit'}
-          </button>
         </div>
-      </div>
+      )}
 
       {/* MODAL EDIT ITEM KERANJANG */}
       {editingCartItemId && editingCartItem && (

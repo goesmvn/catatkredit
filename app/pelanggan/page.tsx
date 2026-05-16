@@ -4,35 +4,21 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { formatRupiah } from '@/lib/mockData'
 import { useSettings } from '@/lib/hooks/useSettings'
+import { useDataCache } from '@/lib/hooks/useDataCache'
 
 type CustomerStatus = 'LANCAR' | 'BLACKLIST' | 'MENUNGGAK'
 
 export default function PelangganPage() {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<CustomerStatus | 'ALL'>('ALL')
-  const [customers, setCustomers] = useState<any[]>([])
-  const [transactions, setTransactions] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const settings = useSettings()
 
-  const fetchData = async () => {
-    try {
-      const [custRes, txRes] = await Promise.all([
-        fetch('/api/customers'),
-        fetch('/api/transactions'),
-      ])
-      setCustomers(await custRes.json())
-      setTransactions(await txRes.json())
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: customersData, loading: loadingCust } = useDataCache<any[]>('/api/customers')
+  const { data: transactionsData, loading: loadingTx } = useDataCache<any[]>('/api/transactions')
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  const customers = customersData || []
+  const transactions = transactionsData || []
+  const loading = loadingCust || loadingTx
 
   const getDynamicStatus = (c: any): CustomerStatus => {
     if (c.status === 'BLACKLIST') return 'BLACKLIST'
@@ -50,7 +36,7 @@ export default function PelangganPage() {
     return matchSearch && (filterStatus === 'ALL' || dynamicStatus === filterStatus)
   })
 
-  if (loading) {
+  if (loading && customers.length === 0) {
     return <div style={{ textAlign: 'center', padding: '60px 20px', fontSize: '18px' }}>Memuat data...</div>
   }
 
