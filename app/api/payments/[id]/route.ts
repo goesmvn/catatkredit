@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { db, initDB } from '@/lib/db/server/sqlite';
+import { syncCustomerStatusInDB } from '@/lib/db/server/status-sync';
 
 initDB();
+
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const id = params.id;
+    const row = db.prepare('SELECT * FROM payments WHERE id = ?').get(id);
+    if (!row) return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
+    return NextResponse.json(row);
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -30,9 +42,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         `UPDATE payments SET nominal_bayar = ?, sisa_hutang = ?, updated_at = ? WHERE id = ?`
       ).run(nominal_bayar, newHutang, now, id);
 
-      const newStatus = newHutang <= 0 ? 'LANCAR' : 'MENUNGGAK';
-      db.prepare('UPDATE customers SET total_hutang = ?, status = ?, updated_at = ? WHERE id = ?')
-        .run(newHutang, newStatus, now, customer_id);
+      db.prepare('UPDATE customers SET total_hutang = ?, updated_at = ? WHERE id = ?')
+        .run(newHutang, now, customer_id);
+
+      syncCustomerStatusInDB(customer_id, now);
     });
 
     updatePayment();
@@ -62,9 +75,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       db.prepare(`UPDATE payments SET deleted_at = ?, updated_at = ? WHERE id = ?`)
         .run(now, now, id);
 
-      const newStatus = newHutang <= 0 ? 'LANCAR' : 'MENUNGGAK';
-      db.prepare('UPDATE customers SET total_hutang = ?, status = ?, updated_at = ? WHERE id = ?')
-        .run(newHutang, newStatus, now, customer_id);
+      db.prepare('UPDATE customers SET total_hutang = ?, updated_at = ? WHERE id = ?')
+        .run(newHutang, now, customer_id);
+
+      syncCustomerStatusInDB(customer_id, now);
     });
 
     deletePayment();

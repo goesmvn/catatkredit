@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { db, initDB } from '@/lib/db/server/sqlite';
+import { calculateCustomerStatus } from '@/lib/utils/status';
 
 initDB();
 
@@ -12,6 +13,39 @@ export async function GET() {
 
     const totalPiutang = customers.reduce((s: number, c: any) => s + (Number(c.total_hutang) || 0), 0);
     const todayStr = new Date().toLocaleDateString('id-ID');
+
+    // Get settings to find batas_menunggak_hari
+    const settingsRows = (db.prepare('SELECT key, value FROM settings').all() as any[]) || [];
+    const settings: any = {};
+    settingsRows.forEach(r => {
+      if (r && r.key) {
+        settings[r.key] = r.value;
+      }
+    });
+    const batasMenunggakHari = parseInt(settings.batas_menunggak_hari, 10) || 30;
+    const nowMs = Date.now();
+
+    const txMap = new Map<string, any[]>();
+    transactions.forEach(t => {
+      if (!txMap.has(t.customer_id)) txMap.set(t.customer_id, []);
+      txMap.get(t.customer_id)!.push(t);
+    });
+
+    const pmMap = new Map<string, any[]>();
+    payments.forEach(p => {
+      if (!pmMap.has(p.customer_id)) pmMap.set(p.customer_id, []);
+      pmMap.get(p.customer_id)!.push(p);
+    });
+
+    const normalizedCustomers = customers.map((c: any) => {
+      const cTxs = txMap.get(c.id) || [];
+      const cPms = pmMap.get(c.id) || [];
+      const dynamicStatus = calculateCustomerStatus(c, cTxs, cPms, batasMenunggakHari, nowMs);
+      return {
+        ...c,
+        status: dynamicStatus
+      };
+    });
 
     const uangMasukHariIni = (payments || []).reduce((s: number, p: any) => {
       try {
@@ -51,14 +85,27 @@ export async function GET() {
       return tt;
     });
 
+    // Sort transactions and payments descending by timestamp before slicing to 20
+    const sortedTransactions = [...normalizedTransactions]
+      .sort((a, b) => b.tanggal - a.tanggal)
+      .slice(0, 20);
+
+    const sortedPayments = [...(payments || [])]
+      .sort((a, b) => {
+        const timeA = Number(a.tanggal_bayar) || 0;
+        const timeB = Number(b.tanggal_bayar) || 0;
+        return timeB - timeA;
+      })
+      .slice(0, 20);
+
     return NextResponse.json({
       totalPiutang,
       uangMasukHariIni,
       totalCustomers: customers.length,
       blacklistCount: customers.filter((c: any) => c.status === 'BLACKLIST').length,
-      customers,
-      transactions: normalizedTransactions.slice(0, 20),
-      payments: (payments || []).slice(0, 20),
+      customers: normalizedCustomers,
+      transactions: sortedTransactions,
+      payments: sortedPayments,
     });
   } catch (e: any) {
     console.error('Dashboard API error:', e);

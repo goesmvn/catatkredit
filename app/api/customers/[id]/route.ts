@@ -1,22 +1,37 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { db, initDB } from '@/lib/db/server/sqlite';
+import { calculateCustomerStatus } from '@/lib/utils/status';
 
 initDB();
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const customer = db.prepare('SELECT * FROM customers WHERE id = ? AND deleted_at IS NULL').get(id);
+    const customer = db.prepare('SELECT * FROM customers WHERE id = ? AND deleted_at IS NULL').get(id) as any;
     if (!customer) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    const transactions = db.prepare('SELECT * FROM transactions WHERE customer_id = ? AND deleted_at IS NULL ORDER BY tanggal DESC').all(id);
-    const payments = db.prepare('SELECT * FROM payments WHERE customer_id = ? AND deleted_at IS NULL ORDER BY tanggal_bayar DESC').all(id);
+    const transactions = db.prepare('SELECT * FROM transactions WHERE customer_id = ? AND deleted_at IS NULL ORDER BY tanggal DESC').all(id) as any[];
+    const payments = db.prepare('SELECT * FROM payments WHERE customer_id = ? AND deleted_at IS NULL ORDER BY tanggal_bayar DESC').all(id) as any[];
+    
+    // Get settings to find batas_menunggak_hari
+    const settingsRows = (db.prepare('SELECT key, value FROM settings').all() as any[]) || [];
+    const settings: any = {};
+    settingsRows.forEach(r => {
+      if (r && r.key) {
+        settings[r.key] = r.value;
+      }
+    });
+    const batasMenunggakHari = parseInt(settings.batas_menunggak_hari, 10) || 30;
+
+    const dynamicStatus = calculateCustomerStatus(customer, transactions, payments, batasMenunggakHari, Date.now());
+    const customerWithStatus = { ...customer, status: dynamicStatus };
+
     const items = db.prepare(
       `SELECT ti.* FROM transaction_items ti
        JOIN transactions t ON t.id = ti.transaction_id
        WHERE t.customer_id = ? AND ti.deleted_at IS NULL`
     ).all(id);
-    return NextResponse.json({ customer, transactions, payments, items });
+    return NextResponse.json({ customer: customerWithStatus, transactions, payments, items });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { db, initDB } from '@/lib/db/server/sqlite';
+import { syncCustomerStatusInDB } from '@/lib/db/server/status-sync';
 
 initDB();
 
@@ -34,9 +35,10 @@ export async function POST(request: Request) {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(id, customer_id, nominal_bayar, tanggal_bayar || now, created_by || null, newHutang, now, now);
 
-      const newStatus = newHutang <= 0 ? 'LANCAR' : 'MENUNGGAK';
-      db.prepare('UPDATE customers SET total_hutang = ?, status = ?, updated_at = ? WHERE id = ?')
-        .run(newHutang, newStatus, now, customer_id);
+      db.prepare('UPDATE customers SET total_hutang = ?, updated_at = ? WHERE id = ?')
+        .run(newHutang, now, customer_id);
+
+      syncCustomerStatusInDB(customer_id, now);
     });
 
     insertPayment();

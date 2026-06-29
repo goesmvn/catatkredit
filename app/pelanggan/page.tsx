@@ -13,20 +13,12 @@ export default function PelangganPage() {
   const [filterStatus, setFilterStatus] = useState<CustomerStatus | 'ALL'>('ALL')
   const settings = useSettings()
 
-  const { data: customersData, loading: loadingCust } = useDataCache<any[]>('/api/customers')
-  const { data: transactionsData, loading: loadingTx } = useDataCache<any[]>('/api/transactions')
+  const { data: customersData, loading } = useDataCache<any[]>('/api/customers')
 
   const customers = customersData || []
-  const transactions = transactionsData || []
-  const loading = loadingCust || loadingTx
 
   const getDynamicStatus = (c: any): CustomerStatus => {
-    if (c.status === 'BLACKLIST') return 'BLACKLIST'
-    if (c.total_hutang <= 0) return 'LANCAR'
-    const nowMs = Date.now()
-    const batasMs = (settings.batas_menunggak_hari || 30) * 86400000
-    const unpaidTxs = transactions.filter(t => t.customer_id === c.id && t.status !== 'LUNAS')
-    return unpaidTxs.some(t => (nowMs - t.tanggal) > batasMs) ? 'MENUNGGAK' : 'LANCAR'
+    return c.status || 'LANCAR'
   }
 
   const filtered = customers.filter(c => {

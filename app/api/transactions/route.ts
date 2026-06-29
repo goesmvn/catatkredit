@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 export const dynamic = 'force-dynamic';
 import { db, initDB } from '@/lib/db/server/sqlite';
+import { syncCustomerStatusInDB } from '@/lib/db/server/status-sync';
 
 initDB();
 
@@ -53,6 +54,8 @@ export async function POST(request: Request) {
       // Update total hutang customer
       db.prepare('UPDATE customers SET total_hutang = total_hutang + ?, updated_at = ? WHERE id = ?')
         .run(total_harga, now, customer_id);
+
+      syncCustomerStatusInDB(customer_id, now);
     });
 
     insertTx();

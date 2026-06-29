@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db, initDB } from '@/lib/db/server/sqlite';
+import { syncCustomerStatusInDB } from '@/lib/db/server/status-sync';
 
 initDB();
 
@@ -32,6 +33,8 @@ export async function DELETE(
       // 3. Update customer total_hutang
       db.prepare('UPDATE customers SET total_hutang = total_hutang - ?, updated_at = ? WHERE id = ?')
         .run(tx.total_harga, now, tx.customer_id);
+
+      syncCustomerStatusInDB(tx.customer_id, now);
     });
 
     deleteTx();
@@ -61,8 +64,8 @@ export async function PUT(
         db.prepare(`
           UPDATE transactions 
           SET total_harga = COALESCE(?, total_harga), 
-              status = COALESCE(?, status), 
-              updated_at = ? 
+               status = COALESCE(?, status), 
+               updated_at = ? 
           WHERE id = ?
         `).run(total_harga, status, now, id);
       }
@@ -84,6 +87,8 @@ export async function PUT(
           `).run(item.id || crypto.randomUUID(), id, item.item_tag_name || item.nama_barang, item.nama_barang, item.qty, item.harga_satuan, item.subtotal, now, now);
         }
       }
+
+      syncCustomerStatusInDB(oldTx.customer_id, now);
     });
 
     updateTx();

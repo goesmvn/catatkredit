@@ -13,6 +13,21 @@ export default function DashboardPage() {
   
   const { data: rawData, loading: isCacheLoading, refetch } = useDataCache<any>('/api/dashboard')
 
+  const [hideBalance, setHideBalance] = useState<boolean>(true)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('hideBalance')
+    if (saved !== null) {
+      setHideBalance(saved === 'true')
+    }
+  }, [])
+
+  const toggleHideBalance = () => {
+    const newVal = !hideBalance
+    setHideBalance(newVal)
+    localStorage.setItem('hideBalance', String(newVal))
+  }
+
   useEffect(() => {
     // Refresh setiap 30 detik
     const interval = setInterval(refetch, 30000)
@@ -33,24 +48,7 @@ export default function DashboardPage() {
 
   const { totalPiutang = 0, uangMasukHariIni = 0, customers = [], transactions = [], payments = [] } = data || {}
 
-  const nowMs = Date.now()
-  const batasMs = (settings.batas_menunggak_hari || 30) * 86400000
-
-  const isMacet = (c: any) => {
-    if (c.status === 'BLACKLIST') return false
-    if (c.total_hutang <= 0) return false
-    
-    const custPayments = payments.filter((p: any) => p.customer_id === c.id)
-    if (custPayments.length > 0) {
-      const lastPaymentTime = Math.max(...custPayments.map((p: any) => p.tanggal_bayar))
-      return (nowMs - lastPaymentTime) > batasMs
-    } else {
-      const unpaidTxs = transactions.filter((t: any) => t.customer_id === c.id && t.status !== 'LUNAS')
-      if (unpaidTxs.length === 0) return false
-      const oldestTxTime = Math.min(...unpaidTxs.map((t: any) => t.tanggal))
-      return (nowMs - oldestTxTime) > batasMs
-    }
-  }
+  const isMacet = (c: any) => c.status === 'MENUNGGAK'
 
   const menunggakCount = customers.filter(isMacet).length
 
@@ -116,7 +114,26 @@ export default function DashboardPage() {
             border: '1px solid rgba(255,255,255,0.18)',
             overflow: 'hidden',
           }}>
-            <p style={{ fontSize: '12px', opacity: 0.8, marginBottom: '8px', fontWeight: 500 }}>💳 Total Piutang</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <p style={{ fontSize: '12px', opacity: 0.8, fontWeight: 500, margin: 0 }}>💳 Total Piutang</p>
+              <button 
+                onClick={toggleHideBalance}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'white', 
+                  cursor: 'pointer',
+                  opacity: 0.8,
+                  padding: '2px 4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontSize: '14px',
+                }}
+                title={hideBalance ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
+              >
+                {hideBalance ? '👁️' : '🙈'}
+              </button>
+            </div>
             <p style={{
               fontSize: 'clamp(18px, 4.5vw, 28px)',
               fontWeight: 800,
@@ -125,7 +142,7 @@ export default function DashboardPage() {
               wordBreak: 'break-all',
               overflowWrap: 'break-word',
             }}>
-              {formatRupiah(totalPiutang)}
+              {hideBalance ? 'Rp ••••••••' : formatRupiah(totalPiutang)}
             </p>
           </div>
           

@@ -95,15 +95,9 @@ export default function LaporanPage() {
     return new Date(Math.max(...custPayments.map(p => p.tanggal_bayar)))
   }
 
-  const kreditMacet = tunggakan.filter(c => {
-    const lastPayment = getLastPaymentDate(c.id)
-    if (lastPayment) {
-      return daysSince(lastPayment) >= batasMacet
-    } else {
-      const oldestTx = getOldestUnpaidTxDate(c.id)
-      return oldestTx ? daysSince(oldestTx) >= batasMacet : false
-    }
-  })
+  const kreditMacet = customers
+    .filter(c => c.status === 'MENUNGGAK')
+    .sort((a, b) => (b.total_hutang || 0) - (a.total_hutang || 0))
 
   const handlePrintCustomerRecap = () => {
     if (typeof window !== 'undefined') {

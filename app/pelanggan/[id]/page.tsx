@@ -55,9 +55,9 @@ export default function PelangganDetailPage() {
 
   const nowMs = Date.now()
   const batasMs = (settings.batas_menunggak_hari || 30) * 86400000
-  const isBlacklisted = customer.status === 'BLACKLIST'
-  const isMenunggak = customer.total_hutang > 0 && txs.some(t => t.status !== 'LUNAS' && (nowMs - t.tanggal) > batasMs)
-  const displayStatus = isBlacklisted ? 'BLACKLIST' : isMenunggak ? 'MENUNGGAK' : 'LANCAR'
+  const displayStatus = customer.status || 'LANCAR'
+  const isBlacklisted = displayStatus === 'BLACKLIST'
+  const isMenunggak = displayStatus === 'MENUNGGAK'
   const latestPaymentTs = payments.length > 0 ? Math.max(...payments.map((p: any) => p.tanggal_bayar)) : null
 
   // Get items for a specific transaction
