@@ -301,7 +301,8 @@ export default function PelangganDetailPage() {
           </>
         )}
         {!printPayment && (
-        {isBlacklisted && (
+          <>
+            {isBlacklisted && (
           <div className="blacklist-banner">
             <span style={{ fontSize: '24px' }}>🚫</span>
             <div>
@@ -616,6 +617,7 @@ export default function PelangganDetailPage() {
             </div>
           )}
         </div>
+          </>
         )}
       </div>
 
