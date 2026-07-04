@@ -354,9 +354,27 @@ function PembayaranForm() {
                       size: 58mm auto;
                       margin: 0;
                     }
-                    body {
-                      width: 58mm;
-                      max-width: 58mm;
+                    html, body {
+                      width: 58mm !important;
+                      max-width: 58mm !important;
+                      margin: 0 !important;
+                      padding: 0 !important;
+                      background: #fff !important;
+                      visibility: hidden !important;
+                    }
+                    .receipt {
+                      visibility: visible !important;
+                      position: absolute !important;
+                      left: 0 !important;
+                      top: 0 !important;
+                      width: 100% !important;
+                      max-width: 100% !important;
+                      margin: 0 !important;
+                      padding: 0 4mm !important;
+                      box-sizing: border-box !important;
+                    }
+                    .receipt * {
+                      visibility: visible !important;
                     }
                   }
                 `}} />
