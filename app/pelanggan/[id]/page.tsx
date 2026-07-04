@@ -330,12 +330,6 @@ export default function PelangganDetailPage() {
                 </>
               )}
               <button
-                onClick={() => window.print?.()}
-                className="btn btn-primary btn-xl btn-full"
-              >
-                🖨️ Cetak Ulang Struk (Sistem/RawBT)
-              </button>
-              <button
                 onClick={() => setPrintPayment(null)}
                 className="btn btn-ghost btn-lg btn-full"
               >

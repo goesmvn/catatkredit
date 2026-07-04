@@ -501,22 +501,9 @@ function BonBaruForm() {
               </>
             )}
             <button
-              onClick={() => {
-                try {
-                  window.print?.()
-                } catch (e) {
-                  console.error('Print failed', e)
-                }
-              }}
-              className="btn btn-primary btn-xl btn-full no-print"
-              style={{ marginTop: isBluetoothSupported ? '8px' : '12px' }}
-            >
-              🖨️ Cetak Struk (Sistem/RawBT)
-            </button>
-            <button
               onClick={() => router.push(`/pelanggan/${selectedCustomerId}`)}
               className="btn btn-ghost btn-lg btn-full no-print"
-              style={{ marginTop: '8px' }}
+              style={{ marginTop: '12px' }}
             >
               Selesai (Kembali ke Profil)
             </button>
