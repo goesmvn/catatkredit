@@ -456,8 +456,6 @@ function BonBaruForm() {
                   window.print?.()
                 } catch (e) {
                   console.error('Print failed', e)
-                } finally {
-                  setTimeout(() => router.push(`/pelanggan/${selectedCustomerId}`), 600)
                 }
               }}
               className="btn btn-primary btn-xl btn-full no-print"

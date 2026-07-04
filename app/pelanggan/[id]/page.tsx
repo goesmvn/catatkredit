@@ -139,8 +139,7 @@ export default function PelangganDetailPage() {
     setPrintPayment(payment)
     setTimeout(() => {
       window.print?.()
-      setTimeout(() => setPrintPayment(null), 600)
-    }, 100)
+    }, 150)
   }
 
   const handleSaveEditTx = async () => {
@@ -282,6 +281,20 @@ export default function PelangganDetailPage() {
               </div>
               <hr style={{ margin: '12px 0' }} />
               <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
+            </div>
+            <div className="no-print" style={{ maxWidth: '400px', margin: '16px auto 0 auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                onClick={() => window.print?.()}
+                className="btn btn-primary btn-xl btn-full"
+              >
+                🖨️ Cetak Ulang Struk
+              </button>
+              <button
+                onClick={() => setPrintPayment(null)}
+                className="btn btn-ghost btn-lg btn-full"
+              >
+                Tutup
+              </button>
             </div>
           </>
         )}

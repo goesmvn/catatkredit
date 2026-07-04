@@ -406,13 +406,9 @@ function PembayaranForm() {
                 <button
                   onClick={() => {
                     try {
-                      // buka dialog cetak browser (atau handler cetak Bluetooth jika ada)
                       window.print?.()
                     } catch (e) {
                       console.error('Print failed', e)
-                    } finally {
-                      // setelah memicu cetak, kembali ke detail pelanggan yang membayar
-                      setTimeout(() => router.push(`/pelanggan/${selected}`), 600)
                     }
                   }}
                   className="btn btn-primary btn-xl btn-full"
@@ -425,7 +421,7 @@ function PembayaranForm() {
                   className="btn btn-ghost btn-lg btn-full"
                   style={{ marginTop: '8px' }}
                 >
-                  Tidak, Kembali ke Detail Pelanggan
+                  Selesai & Kembali ke Detail Pelanggan
                 </button>
               </div>
             )}
