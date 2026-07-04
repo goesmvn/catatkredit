@@ -107,25 +107,27 @@ function PembayaranForm() {
 
   return (
     <div>
-      <div className="no-print" style={{
-        background: 'linear-gradient(135deg, var(--success) 0%, #155f38 100%)',
-        padding: '20px', color: 'white',
-      }}>
-        <button onClick={() => router.back()} style={{
-          display: 'inline-flex', alignItems: 'center', gap: '8px',
-          background: 'white', color: 'var(--primary-dark)',
-          padding: '8px 16px', borderRadius: '50px',
-          border: 'none', cursor: 'pointer',
-          fontSize: '16px', fontWeight: 700,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)', marginBottom: '16px'
+      {!showReceipt && (
+        <div className="no-print" style={{
+          background: 'linear-gradient(135deg, var(--success) 0%, #155f38 100%)',
+          padding: '20px', color: 'white',
         }}>
-          <span style={{ fontSize: '20px' }}>←</span> Kembali
-        </button>
-        <h1 style={{ fontSize: '22px', fontWeight: 800 }}>💰 Bayar Kredit</h1>
-        <p style={{ fontSize: '14px', opacity: 0.85 }}>Catat pembayaran pelanggan</p>
-      </div>
+          <button onClick={() => router.back()} style={{
+            display: 'inline-flex', alignItems: 'center', gap: '8px',
+            background: 'white', color: 'var(--primary-dark)',
+            padding: '8px 16px', borderRadius: '50px',
+            border: 'none', cursor: 'pointer',
+            fontSize: '16px', fontWeight: 700,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)', marginBottom: '16px'
+          }}>
+            <span style={{ fontSize: '20px' }}>←</span> Kembali
+          </button>
+          <h1 style={{ fontSize: '22px', fontWeight: 800 }}>💰 Bayar Kredit</h1>
+          <p style={{ fontSize: '14px', opacity: 0.85 }}>Catat pembayaran pelanggan</p>
+        </div>
+      )}
 
-      {saved && (
+      {saved && !showReceipt && (
         <div className="toast-container no-print">
           <div className="toast toast-success">
             {isLunas ? '🎉 LUNAS! Pembayaran berhasil disimpan' : '✅ Pembayaran berhasil disimpan'}
@@ -201,23 +203,25 @@ function PembayaranForm() {
         ) : (
           <>
             {/* Selected customer display */}
-            <div className="card-elevated no-print" style={{ textAlign: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="list-item__avatar" style={{ width: 48, height: 48, fontSize: '20px' }}>{customer?.nama.charAt(0)}</div>
-                  <div style={{ textAlign: 'left' }}>
-                    <p style={{ fontSize: '18px', fontWeight: 700 }}>{customer?.nama}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{customer?.alamat}</p>
+            {!showReceipt && (
+              <div className="card-elevated no-print" style={{ textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div className="list-item__avatar" style={{ width: 48, height: 48, fontSize: '20px' }}>{customer?.nama.charAt(0)}</div>
+                    <div style={{ textAlign: 'left' }}>
+                      <p style={{ fontSize: '18px', fontWeight: 700 }}>{customer?.nama}</p>
+                      <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{customer?.alamat}</p>
+                    </div>
                   </div>
+                  <button onClick={() => { setSelected(''); setNominal(''); setSaved(false); setShowReceipt(false) }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: 'var(--text-muted)' }}>✕</button>
                 </div>
-                <button onClick={() => { setSelected(''); setNominal(''); setSaved(false); setShowReceipt(false) }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: 'var(--text-muted)' }}>✕</button>
+                <p style={{ fontSize: '14px', color: 'var(--text-sub)', marginBottom: '4px' }}>Total Hutang (sebelum bayar)</p>
+                <p className="big-number" style={{ fontSize: '52px', color: 'var(--danger)' }}>
+                  {formatRupiah((saved && initialTotalHutang != null) ? initialTotalHutang : (customer?.total_hutang || 0))}
+                </p>
               </div>
-              <p style={{ fontSize: '14px', color: 'var(--text-sub)', marginBottom: '4px' }}>Total Hutang (sebelum bayar)</p>
-              <p className="big-number" style={{ fontSize: '52px', color: 'var(--danger)' }}>
-                {formatRupiah((saved && initialTotalHutang != null) ? initialTotalHutang : (customer?.total_hutang || 0))}
-              </p>
-            </div>
+            )}
 
             {/* Input bayar */}
             {!saved && (

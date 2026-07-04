@@ -175,24 +175,26 @@ function BonBaruForm() {
   return (
     <div className="kasir-content-wrapper">
       {/* HEADER KOMPAK */}
-      <div className="page-header no-print" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <button onClick={() => router.back()} style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(255,255,255,0.2)', color: 'white',
-          width: '36px', height: '36px', borderRadius: '50%',
-          border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer',
-        }}>
-          <span style={{ fontSize: '18px', lineHeight: 1 }}>←</span>
-        </button>
-        <div>
-          <h1 style={{ fontSize: '18px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>📝</span> Kasir Kredit
-          </h1>
-          <p style={{ fontSize: '12px', opacity: 0.9, margin: 0 }}>Pencatatan kredit baru</p>
+      {!showReceipt && (
+        <div className="page-header no-print" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button onClick={() => router.back()} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(255,255,255,0.2)', color: 'white',
+            width: '36px', height: '36px', borderRadius: '50%',
+            border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer',
+          }}>
+            <span style={{ fontSize: '18px', lineHeight: 1 }}>←</span>
+          </button>
+          <div>
+            <h1 style={{ fontSize: '18px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>📝</span> Kasir Kredit
+            </h1>
+            <p style={{ fontSize: '12px', opacity: 0.9, margin: 0 }}>Pencatatan kredit baru</p>
+          </div>
         </div>
-      </div>
+      )}
 
-      {saved && (
+      {saved && !showReceipt && (
         <div className="toast-container no-print">
           <div className="toast toast-success" style={{ justifyContent: 'center' }}>
             <span>✅</span> Kredit berhasil disimpan!

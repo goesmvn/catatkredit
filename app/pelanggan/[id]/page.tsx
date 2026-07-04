@@ -190,39 +190,41 @@ export default function PelangganDetailPage() {
   return (
     <div>
       {/* Header */}
-      <div className="no-print" style={{
-        background: isBlacklisted
-          ? 'linear-gradient(135deg, var(--danger) 0%, #a93226 100%)'
-          : 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-        padding: '20px', color: 'white',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <Link href="/pelanggan" style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            background: 'white', color: 'var(--primary-dark)',
-            padding: '8px 16px', borderRadius: '50px',
-            textDecoration: 'none', fontSize: '16px', fontWeight: 700,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-          }}>
-            <span style={{ fontSize: '20px' }}>←</span> Kembali
-          </Link>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '28px', fontWeight: 800,
-            border: '3px solid rgba(255,255,255,0.4)',
-          }}>
-            {customer.nama.charAt(0)}
+      {!printPayment && (
+        <div className="no-print" style={{
+          background: isBlacklisted
+            ? 'linear-gradient(135deg, var(--danger) 0%, #a93226 100%)'
+            : 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
+          padding: '20px', color: 'white',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <Link href="/pelanggan" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              background: 'white', color: 'var(--primary-dark)',
+              padding: '8px 16px', borderRadius: '50px',
+              textDecoration: 'none', fontSize: '16px', fontWeight: 700,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+            }}>
+              <span style={{ fontSize: '20px' }}>←</span> Kembali
+            </Link>
           </div>
-          <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 800 }}>{customer.nama}</h1>
-            <p style={{ fontSize: '14px', opacity: 0.85 }}>{customer.alamat}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '28px', fontWeight: 800,
+              border: '3px solid rgba(255,255,255,0.4)',
+            }}>
+              {customer.nama.charAt(0)}
+            </div>
+            <div>
+              <h1 style={{ fontSize: '22px', fontWeight: 800 }}>{customer.nama}</h1>
+              <p style={{ fontSize: '14px', opacity: 0.85 }}>{customer.alamat}</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="page-body">
         {printPayment && (
@@ -298,7 +300,7 @@ export default function PelangganDetailPage() {
             </div>
           </>
         )}
-        <div className={printPayment ? 'no-print' : ''}>
+        {!printPayment && (
         {isBlacklisted && (
           <div className="blacklist-banner">
             <span style={{ fontSize: '24px' }}>🚫</span>
@@ -614,7 +616,7 @@ export default function PelangganDetailPage() {
             </div>
           )}
         </div>
-        </div>
+        )}
       </div>
 
       {/* MODAL BLACKLIST */}
