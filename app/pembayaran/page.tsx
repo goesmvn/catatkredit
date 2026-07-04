@@ -6,6 +6,7 @@ import { formatRupiah } from '@/lib/mockData'
 import { useSettings } from '@/lib/hooks/useSettings'
 import { useAuth } from '@/lib/auth'
 import { useDataCache } from '@/lib/hooks/useDataCache'
+import { useBluetoothPrinter } from '@/lib/hooks/useBluetoothPrinter'
 
 function PembayaranForm() {
   const router = useRouter()
@@ -29,6 +30,17 @@ function PembayaranForm() {
   const savingRef = useRef(false)
 
   const settings = useSettings()
+  const { 
+    connectPrinter, 
+    disconnectPrinter, 
+    printReceipt, 
+    deviceName, 
+    isConnecting: isBtConnecting, 
+    isConnected: isBtConnected,
+    error: btError,
+    isBluetoothSupported
+  } = useBluetoothPrinter()
+
   const customer = dbCustomers.find(c => c.id === selected)
   const nominalNum = parseInt(nominal.replace(/\D/g, '')) || 0
   const previewSisa = customer ? Math.max(0, customer.total_hutang - nominalNum) : 0
@@ -407,6 +419,38 @@ function PembayaranForm() {
                   <hr style={{ margin: '12px 0' }} />
                   <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
                 </div>
+                {isBluetoothSupported && (
+                  <>
+                    <button
+                      onClick={async () => {
+                        const success = await printReceipt(
+                          settings,
+                          'payment',
+                          {
+                            customer_nama: customer?.nama,
+                            sebelum: initialTotalHutang != null ? formatRupiah(initialTotalHutang) : undefined,
+                            bayar: formatRupiah(nominalNum),
+                            sisa: sisaHutang <= 0 ? 'LUNAS' : formatRupiah(sisaHutang),
+                            sisa_detail: sisaHutang <= 0 ? '🎉 Terima kasih! Hutang Anda sudah LUNAS!' : `Terima kasih! Sisa hutang Anda ${formatRupiah(sisaHutang)}`
+                          }
+                        );
+                        if (success) {
+                          alert('Berhasil mencetak via Bluetooth!');
+                        }
+                      }}
+                      disabled={isBtConnecting}
+                      className="btn btn-success btn-xl btn-full"
+                      style={{ marginTop: '12px' }}
+                    >
+                      {isBtConnecting ? '⏳ Menghubungkan...' : isBtConnected ? `🔵 Cetak via ${deviceName}` : '🔌 Hubungkan & Cetak Bluetooth'}
+                    </button>
+                    {btError && (
+                      <p style={{ color: 'var(--danger)', fontSize: '13px', textAlign: 'center', margin: '4px 0 8px 0' }}>
+                        ⚠️ {btError}
+                      </p>
+                    )}
+                  </>
+                )}
                 <button
                   onClick={() => {
                     try {
@@ -416,9 +460,9 @@ function PembayaranForm() {
                     }
                   }}
                   className="btn btn-primary btn-xl btn-full"
-                  style={{ marginTop: '12px' }}
+                  style={{ marginTop: isBluetoothSupported ? '8px' : '12px' }}
                 >
-                  🖨️ Cetak Struk
+                  🖨️ Cetak Struk (Sistem/RawBT)
                 </button>
                 <button
                   onClick={() => router.push(`/pelanggan/${selected}`)}

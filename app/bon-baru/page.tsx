@@ -6,6 +6,7 @@ import { formatRupiah } from '@/lib/mockData'
 import { useAuth } from '@/lib/auth'
 import { useDataCache } from '@/lib/hooks/useDataCache'
 import { useSettings } from '@/lib/hooks/useSettings'
+import { useBluetoothPrinter } from '@/lib/hooks/useBluetoothPrinter'
 
 interface CartItem {
   id: string;
@@ -42,6 +43,17 @@ function BonBaruForm() {
   const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null)
   
   const settings = useSettings()
+  const { 
+    connectPrinter, 
+    disconnectPrinter, 
+    printReceipt, 
+    deviceName, 
+    isConnecting: isBtConnecting, 
+    isConnected: isBtConnected,
+    error: btError,
+    isBluetoothSupported
+  } = useBluetoothPrinter()
+
   const [showReceipt, setShowReceipt] = useState(false)
   const now = new Date()
 
@@ -452,6 +464,42 @@ function BonBaruForm() {
               <hr style={{ margin: '12px 0' }} />
               <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
             </div>
+            {isBluetoothSupported && (
+              <>
+                <button
+                  onClick={async () => {
+                    const success = await printReceipt(
+                      settings,
+                      'credit',
+                      {
+                        customer_nama: selectedCustomer?.nama,
+                        grand_total: formatRupiah(grandTotal),
+                        items: cart.map(item => ({
+                          nama_barang: item.nama_barang,
+                          qty: item.qty,
+                          harga_satuan: formatRupiah(item.harga_satuan),
+                          subtotal: formatRupiah(item.subtotal)
+                        })),
+                        tanggal_formatted: now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' — ' + now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                      }
+                    );
+                    if (success) {
+                      alert('Berhasil mencetak via Bluetooth!');
+                    }
+                  }}
+                  disabled={isBtConnecting}
+                  className="btn btn-success btn-xl btn-full no-print"
+                  style={{ marginTop: '12px' }}
+                >
+                  {isBtConnecting ? '⏳ Menghubungkan...' : isBtConnected ? `🔵 Cetak via ${deviceName}` : '🔌 Hubungkan & Cetak Bluetooth'}
+                </button>
+                {btError && (
+                  <p style={{ color: 'var(--danger)', fontSize: '13px', textAlign: 'center', margin: '4px 0 8px 0' }} className="no-print">
+                    ⚠️ {btError}
+                  </p>
+                )}
+              </>
+            )}
             <button
               onClick={() => {
                 try {
@@ -461,9 +509,9 @@ function BonBaruForm() {
                 }
               }}
               className="btn btn-primary btn-xl btn-full no-print"
-              style={{ marginTop: '12px' }}
+              style={{ marginTop: isBluetoothSupported ? '8px' : '12px' }}
             >
-              🖨️ Cetak Struk
+              🖨️ Cetak Struk (Sistem/RawBT)
             </button>
             <button
               onClick={() => router.push(`/pelanggan/${selectedCustomerId}`)}

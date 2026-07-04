@@ -7,6 +7,7 @@ import { formatRupiah, formatDate, formatDateTime } from '@/lib/mockData'
 import { useSettings } from '@/lib/hooks/useSettings'
 import { useDataCache } from '@/lib/hooks/useDataCache'
 import { notFound } from 'next/navigation'
+import { useBluetoothPrinter } from '@/lib/hooks/useBluetoothPrinter'
 
 const daysSince = (d: number): number => Math.floor((Date.now() - d) / 86400000)
 
@@ -38,6 +39,17 @@ export default function PelangganDetailPage() {
   const [showEditPaymentModal, setShowEditPaymentModal] = useState(false)
   const [editPaymentForm, setEditPaymentForm] = useState({ id: '', nominal_bayar: 0 })
   const [printPayment, setPrintPayment] = useState<any>(null)
+  
+  const { 
+    connectPrinter, 
+    disconnectPrinter, 
+    printReceipt, 
+    deviceName, 
+    isConnecting: isBtConnecting, 
+    isConnected: isBtConnected,
+    error: btError,
+    isBluetoothSupported
+  } = useBluetoothPrinter()
 
   const fetchData = refetch
 
@@ -285,11 +297,43 @@ export default function PelangganDetailPage() {
               <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
             </div>
             <div className="no-print" style={{ maxWidth: '400px', margin: '16px auto 0 auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {isBluetoothSupported && (
+                <>
+                  <button
+                    onClick={async () => {
+                      const success = await printReceipt(
+                        settings,
+                        'payment',
+                        {
+                          customer_nama: customer?.nama,
+                          sebelum: formatRupiah(printPayment.sisa_hutang + printPayment.nominal_bayar),
+                          bayar: formatRupiah(printPayment.nominal_bayar),
+                          sisa: printPayment.sisa_hutang <= 0 ? 'LUNAS' : formatRupiah(printPayment.sisa_hutang),
+                          sisa_detail: printPayment.sisa_hutang <= 0 ? '🎉 Terima kasih! Hutang Anda sudah LUNAS!' : `Terima kasih! Sisa hutang Anda ${formatRupiah(printPayment.sisa_hutang)}`,
+                          tanggal_formatted: new Date(printPayment.tanggal_bayar).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' — ' + new Date(printPayment.tanggal_bayar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                        }
+                      );
+                      if (success) {
+                        alert('Berhasil mencetak via Bluetooth!');
+                      }
+                    }}
+                    disabled={isBtConnecting}
+                    className="btn btn-success btn-xl btn-full"
+                  >
+                    {isBtConnecting ? '⏳ Menghubungkan...' : isBtConnected ? `🔵 Cetak Ulang via ${deviceName}` : '🔌 Hubungkan & Cetak Bluetooth'}
+                  </button>
+                  {btError && (
+                    <p style={{ color: 'var(--danger)', fontSize: '13px', textAlign: 'center', margin: '4px 0 8px 0' }}>
+                      ⚠️ {btError}
+                    </p>
+                  )}
+                </>
+              )}
               <button
                 onClick={() => window.print?.()}
                 className="btn btn-primary btn-xl btn-full"
               >
-                🖨️ Cetak Ulang Struk
+                🖨️ Cetak Ulang Struk (Sistem/RawBT)
               </button>
               <button
                 onClick={() => setPrintPayment(null)}
