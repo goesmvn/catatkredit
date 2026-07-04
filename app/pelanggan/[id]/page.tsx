@@ -227,31 +227,45 @@ export default function PelangganDetailPage() {
 
       <div className="page-body">
         {printPayment && (
-          <div className="receipt">
-            <div className="receipt__header">
-              <div className="receipt__store-name">{settings.nama_toko}</div>
-              <div className="receipt__store-meta">{settings.alamat_toko}</div>
-              <div className="receipt__store-meta">Telp: {settings.no_telepon}</div>
-              <hr />
-              <div className="receipt__title">BUKTI PEMBAYARAN CICILAN</div>
-              <div className="receipt__store-meta">
-                {new Date(printPayment.tanggal_bayar).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} — {new Date(printPayment.tanggal_bayar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+          <>
+            <style dangerouslySetInnerHTML={{ __html: `
+              @media print {
+                @page {
+                  size: 58mm auto;
+                  margin: 0;
+                }
+                body {
+                  width: 58mm;
+                  max-width: 58mm;
+                }
+              }
+            `}} />
+            <div className="receipt">
+              <div className="receipt__header">
+                <div className="receipt__store-name">{settings.nama_toko}</div>
+                <div className="receipt__store-meta">{settings.alamat_toko}</div>
+                <div className="receipt__store-meta">Telp: {settings.no_telepon}</div>
+                <hr />
+                <div className="receipt__title">BUKTI PEMBAYARAN CICILAN</div>
+                <div className="receipt__store-meta">
+                  {new Date(printPayment.tanggal_bayar).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} — {new Date(printPayment.tanggal_bayar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                </div>
               </div>
+              <hr />
+              <div className="receipt__body">
+                <div className="receipt__row"><div className="receipt__label">Pelanggan</div><div className="receipt__value">{customer?.nama}</div></div>
+                <div className="receipt__row"><div className="receipt__label">Sebelum</div><div className="receipt__value">{formatRupiah(printPayment.sisa_hutang + printPayment.nominal_bayar)}</div></div>
+                <div className="receipt__row"><div className="receipt__label">Bayar</div><div className="receipt__value">{formatRupiah(printPayment.nominal_bayar)}</div></div>
+                <div className="receipt__callout">Sisa : {printPayment.sisa_hutang <= 0 ? 'LUNAS' : formatRupiah(printPayment.sisa_hutang)}</div>
+              </div>
+              <hr />
+              <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                <p style={{ fontSize: '13px' }}>{printPayment.sisa_hutang <= 0 ? '🎉 Terima kasih! Hutang Anda sudah LUNAS!' : `Terima kasih! Sisa hutang Anda ${formatRupiah(printPayment.sisa_hutang)}`}</p>
+              </div>
+              <hr style={{ margin: '12px 0' }} />
+              <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
             </div>
-            <hr />
-            <div className="receipt__body">
-              <div className="receipt__row"><div className="receipt__label">Pelanggan</div><div className="receipt__value">{customer?.nama}</div></div>
-              <div className="receipt__row"><div className="receipt__label">Sebelum</div><div className="receipt__value">{formatRupiah(printPayment.sisa_hutang + printPayment.nominal_bayar)}</div></div>
-              <div className="receipt__row"><div className="receipt__label">Bayar</div><div className="receipt__value">{formatRupiah(printPayment.nominal_bayar)}</div></div>
-              <div className="receipt__callout">Sisa : {printPayment.sisa_hutang <= 0 ? 'LUNAS' : formatRupiah(printPayment.sisa_hutang)}</div>
-            </div>
-            <hr />
-            <div style={{ textAlign: 'center', marginTop: '10px' }}>
-              <p style={{ fontSize: '13px' }}>{printPayment.sisa_hutang <= 0 ? '🎉 Terima kasih! Hutang Anda sudah LUNAS!' : `Terima kasih! Sisa hutang Anda ${formatRupiah(printPayment.sisa_hutang)}`}</p>
-            </div>
-            <hr style={{ margin: '12px 0' }} />
-            <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-sub)' }}>{settings.teks_struk}</p>
-          </div>
+          </>
         )}
         <div className={printPayment ? 'no-print' : ''}>
         {isBlacklisted && (

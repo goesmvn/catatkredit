@@ -789,6 +789,8 @@ body {
   html, body {
     background: #fff !important;
     color: #000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .app-container > nav,
@@ -926,9 +928,10 @@ body {
   .receipt {
     border: none !important;
     border-radius: 0 !important;
-    padding: 0 !important;
-    width: 58mm !important;
-    max-width: 58mm !important;
+    padding: 0 4mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
     font-family: 'Courier New', Courier, monospace !important;
     font-size: 11px !important;
     line-height: 1.2 !important;

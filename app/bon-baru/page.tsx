@@ -386,6 +386,18 @@ function BonBaruForm() {
         ) : (
           /* Struk */
           <div>
+            <style dangerouslySetInnerHTML={{ __html: `
+              @media print {
+                @page {
+                  size: 58mm auto;
+                  margin: 0;
+                }
+                body {
+                  width: 58mm;
+                  max-width: 58mm;
+                }
+              }
+            `}} />
             <div className="receipt">
               <div className="receipt__header">
                 <div className="receipt__store-name">{settings.nama_toko}</div>
