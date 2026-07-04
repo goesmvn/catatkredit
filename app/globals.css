@@ -928,13 +928,13 @@ body {
   .receipt {
     border: none !important;
     border-radius: 0 !important;
-    padding: 0 4mm !important;
+    padding: 0 2mm !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
     font-family: 'Courier New', Courier, monospace !important;
-    font-size: 11px !important;
-    line-height: 1.2 !important;
+    font-size: 14px !important;
+    line-height: 1.45 !important;
     margin: 0 !important;
   }
 }
@@ -945,19 +945,19 @@ body {
 }
 
 .receipt__store-name { font-weight: 800; font-size: 18px; letter-spacing: -0.01em; margin-bottom: var(--s1); }
-@media print { .receipt__store-name { font-size: 14px !important; margin-bottom: 2px !important; } }
+@media print { .receipt__store-name { font-size: 19px !important; font-weight: bold !important; margin-bottom: 4px !important; } }
 
 .receipt__store-meta { font-size: 13px; color: var(--text-sub); margin-bottom: var(--s1); }
-@media print { .receipt__store-meta { font-size: 10px !important; margin-bottom: 2px !important; color: #000 !important; } }
+@media print { .receipt__store-meta { font-size: 12px !important; margin-bottom: 4px !important; color: #000 !important; } }
 
 .receipt__title { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; margin: var(--s2) 0; color: var(--text-sub); }
-@media print { .receipt__title { font-size: 11px !important; margin: 4px 0 !important; color: #000 !important; } }
+@media print { .receipt__title { font-size: 14px !important; font-weight: bold !important; margin: 8px 0 !important; color: #000 !important; } }
 
 .receipt__row { display:flex; justify-content: space-between; gap: 12px; align-items:center; margin: 6px 0; font-size: 14px; }
-@media print { .receipt__row { font-size: 11px !important; gap: 4px !important; margin: 2px 0 !important; } }
+@media print { .receipt__row { font-size: 14px !important; gap: 6px !important; margin: 4px 0 !important; } }
 
 .receipt__label { color: var(--text-sub); font-weight:600; }
-@media print { .receipt__label { color: #000 !important; font-weight: normal !important; } }
+@media print { .receipt__label { color: #000 !important; font-weight: bold !important; } }
 
 .receipt__value { font-weight:800; color: var(--text-main); text-align:right; min-width: 120px; }
 @media print { .receipt__value { color: #000 !important; font-weight: bold !important; min-width: auto !important; } }
@@ -977,21 +977,22 @@ body {
 
 @media print {
   .receipt__callout {
-    font-size: 12px !important;
+    font-size: 16px !important;
+    font-weight: bold !important;
     background: none !important;
-    padding: 4px 0 !important;
+    padding: 8px 0 !important;
     border: none !important;
-    border-top: 1px dashed #000 !important;
-    border-bottom: 1px dashed #000 !important;
+    border-top: 2px dashed #000 !important;
+    border-bottom: 2px dashed #000 !important;
     border-radius: 0 !important;
     color: #000 !important;
     text-align: center;
-    margin-top: 8px !important;
+    margin-top: 12px !important;
   }
 }
 
 .receipt hr { border: none; border-top: 1px dashed var(--border); margin: var(--s3) 0; }
-@media print { .receipt hr { border-top: 1px dashed #000 !important; margin: 4px 0 !important; } }
+@media print { .receipt hr { border-top: 1px dashed #000 !important; margin: 8px 0 !important; } }
 
 /* ---- Bottom tab indicator ---- */
 .tab-indicator {
